@@ -1,0 +1,19 @@
+{
+  "name": "filmy-buzz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A simple Bollywood trivia board with phone buzzers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4"
+  }
+}

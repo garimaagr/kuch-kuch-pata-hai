@@ -1,0 +1,69 @@
+{
+  "draw": {
+    "easy": [
+      "Phuljhadi (sparkler)",
+      "Rocket in a bottle",
+      "Saree",
+      "Rangoli",
+      "Gulab jamun",
+      "Laddoo",
+      "Fairy lights",
+      "Marigold garland",
+      "Gift box with a bow"
+    ],
+    "medium": [
+      "Anaar (flower-pot firecracker)",
+      "Chakri (ground spinner)",
+      "Kurta-pajama",
+      "Mehendi hands",
+      "Kaju katli",
+      "Akash kandil (paper lantern)",
+      "Toran on the door",
+      "Puja thali",
+      "Lakshmi's footprints",
+      "Gold coin",
+      "Dry fruit box"
+    ],
+    "tricky": [
+      "Diwali cleaning (dusting the fan)",
+      "Diwali card party",
+      "Bhai Dooj tilak",
+      "Selfie with the lights",
+      "Someone stepping on the rangoli",
+      "Hanging fairy lights from a ladder",
+      "Swapping mithai boxes with the neighbours",
+      "Touching elders' feet for blessings"
+    ]
+  },
+  "charades": [
+    "Sholay",
+    "Andaz Apna Apna",
+    "Hera Pheri",
+    "Jab We Met",
+    "Chak De! India",
+    "Munna Bhai M.B.B.S.",
+    "Zindagi Na Milegi Dobara",
+    "Golmaal",
+    "Yeh Jawaani Hai Deewani",
+    "Kabir Singh",
+    "Stree",
+    "Bhaag Milkha Bhaag",
+    "Main Hoon Na",
+    "Kabhi Haan Kabhi Naa",
+    "Jab Tak Hai Jaan"
+  ],
+  "mimic": [
+    "Order chai like Amitabh on KBC: \"Aapka chai… lock kiya jaaye?\"",
+    "Ask for the wifi password like Gabbar Singh",
+    "Complain about traffic like Shatrughan Sinha, with at least one \"Khamosh!\"",
+    "Give tomorrow's weather report like Nana Patekar",
+    "Say \"Happy birthday\" like Sunny Deol, dhai kilo ka haath included",
+    "Apologise for being late like SRK, arms out, with dimples",
+    "Ask a waiter for the bill like Mogambo",
+    "Bargain with a sabziwala like Poo from K3G",
+    "Read out a food delivery order like Rajinikanth",
+    "Tell your very conservative mummy-papa you are in love with someone they will NOT approve of, using only corporate-speak",
+    "Do a Bollywood villain's evil laugh, then ask for a glass of water",
+    "Introduce yourself like Kareena as Geet: \"Main apni favourite hoon!\""
+  ]
+}

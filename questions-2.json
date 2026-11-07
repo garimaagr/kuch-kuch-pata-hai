@@ -1,0 +1,191 @@
+[
+  {
+    "category": "Pyaar Dosti Hai",
+    "questions": [
+      {
+        "value": 100,
+        "question": "What are the names of the three main friends in Dil Chahta Hai?",
+        "answer": "Akash, Sameer and Sid",
+        "bonus": "Sing a line of the \"Dil Chahta Hai\" title song",
+        "bonusPoints": 50
+      },
+      {
+        "value": 200,
+        "question": "In Zindagi Na Milegi Dobara, which character is played by Farhan Akhtar?",
+        "answer": "Imran",
+        "bonus": "Recite two lines of made-up poetry, Imran-style",
+        "bonusPoints": 50
+      },
+      {
+        "value": 300,
+        "question": "Which film features the friendship between Jai and Veeru?",
+        "answer": "Sholay",
+        "bonus": "Play Jai's harmonica tune for 5 seconds (air harmonica is fine)",
+        "bonusPoints": 50
+      },
+      {
+        "value": 400,
+        "question": "In Rang De Basanti, what is the name of the British filmmaker who makes a documentary about Indian freedom fighters?",
+        "answer": "Sue McKinley",
+        "bonus": "Sing a line of \"Masti Ki Paathshaala\"",
+        "bonusPoints": 50
+      },
+      {
+        "value": 500,
+        "question": "In 3 Idiots, what is the name of the character who narrates the story while searching for Rancho?",
+        "answer": "Farhan Qureshi",
+        "bonus": "Give a 10-second speech like Chatur, with total confidence",
+        "bonusPoints": 50
+      }
+    ]
+  },
+  {
+    "category": "Ad Break Mein Yaad Hai?",
+    "questions": [
+      {
+        "value": 100,
+        "question": "Which chocolate brand used the famous \"Kuch Meetha Ho Jaaye\" slogan?",
+        "answer": "Cadbury Dairy Milk",
+        "bonus": "Do the girl-dancing-onto-the-cricket-field dance",
+        "bonusPoints": 50
+      },
+      {
+        "value": 200,
+        "question": "Which detergent brand is associated with the slogan \"Daag Achhe Hain\"?",
+        "answer": "Surf Excel",
+        "bonus": "Act out jumping in a mud puddle, then looking very pleased",
+        "bonusPoints": 50
+      },
+      {
+        "value": 300,
+        "question": "Which Indian telecom brand became famous for the \"Har Ek Friend Zaroori Hota Hai\" campaign?",
+        "answer": "Airtel",
+        "bonus": "Sing the \"Har ek friend zaroori hota hai\" jingle",
+        "bonusPoints": 50
+      },
+      {
+        "value": 400,
+        "question": "Which brand featured the \"Washing Powder Nirma\" jingle?",
+        "answer": "Nirma",
+        "bonus": "Sing the full \"Washing powder Nirma\" jingle, twirl included",
+        "bonusPoints": 50
+      },
+      {
+        "value": 500,
+        "question": "Which Indian brand used the advertising character \"Gattu\", created by R. K. Laxman?",
+        "answer": "Asian Paints",
+        "bonus": "Draw Gattu in 10 seconds",
+        "bonusPoints": 50
+      }
+    ]
+  },
+  {
+    "category": "Aila!",
+    "questions": [
+      {
+        "value": 100,
+        "question": "Who captained India to its 2011 Cricket World Cup victory?",
+        "answer": "MS Dhoni",
+        "bonus": "Play a helicopter shot and hold the finish",
+        "bonusPoints": 50
+      },
+      {
+        "value": 200,
+        "question": "Which Indian batter hit six sixes in one over against England in the 2007 T20 World Cup?",
+        "answer": "Yuvraj Singh"
+      },
+      {
+        "value": 300,
+        "question": "Which country did India defeat in the 1983 Cricket World Cup final?",
+        "answer": "West Indies",
+        "bonus": "Lift the trophy on the Lord's balcony like Kapil Dev",
+        "bonusPoints": 50
+      },
+      {
+        "value": 400,
+        "question": "Who took the final wicket in India's 2007 T20 World Cup final against Pakistan?",
+        "answer": "Joginder Sharma (Misbah-ul-Haq, caught by Sreesanth)"
+      },
+      {
+        "value": 500,
+        "question": "Which Australian batter scored an unbeaten 201 against Afghanistan in the 2023 World Cup, despite suffering from severe cramps?",
+        "answer": "Glenn Maxwell"
+      }
+    ]
+  },
+  {
+    "category": "Dhan Dhana Dhan Goal",
+    "questions": [
+      {
+        "value": 100,
+        "question": "Which Kolkata club, founded in 1889, famously beat an English regiment team in the 1911 IFA Shield final, with most of its players barefoot?",
+        "answer": "Mohun Bagan"
+      },
+      {
+        "value": 200,
+        "question": "Which three countries jointly hosted the 2026 FIFA World Cup?",
+        "answer": "Canada, Mexico and the United States"
+      },
+      {
+        "value": 300,
+        "question": "Who holds the record for the most goals in men's international football, and roughly how many has he scored?",
+        "answer": "Cristiano Ronaldo — about 146 (accept anything close)",
+        "bonus": "Do the \"Siuuu\" celebration",
+        "bonusPoints": 50
+      },
+      {
+        "value": 400,
+        "question": "Which player holds the record for the most appearances in men's FIFA World Cup matches, and how many has he played?",
+        "answer": "Lionel Messi — 34 appearances",
+        "bonus": "Lift an imaginary World Cup, Messi-style",
+        "bonusPoints": 50
+      },
+      {
+        "value": 500,
+        "question": "What is common to these footballers: Alfredo Di Stéfano, Ferenc Puskás, Diego Costa, Thiago Motta, José Altafini, Declan Rice, Wilfried Zaha, Jermaine Jones and Munir El Haddadi?",
+        "answer": "They all played international football for more than one country"
+      }
+    ]
+  },
+  {
+    "category": "Film Pehchano",
+    "note": "We give the song, you name the film 🎶",
+    "questions": [
+      {
+        "value": 100,
+        "question": "\"Bole chudiyan, bole kangana…\" belongs to which film?",
+        "answer": "Kabhi Khushi Kabhie Gham",
+        "bonus": "Do the \"Bole Chudiyan\" hook step",
+        "bonusPoints": 50
+      },
+      {
+        "value": 200,
+        "question": "Which film features \"London Thumakda\"?",
+        "answer": "Queen",
+        "bonus": "Do the \"London Thumakda\" hook step",
+        "bonusPoints": 50
+      },
+      {
+        "value": 300,
+        "question": "\"All Izz Well\" is from which film?",
+        "answer": "3 Idiots",
+        "bonus": "Say \"All izz well\" with the hand-on-chest move",
+        "bonusPoints": 50
+      },
+      {
+        "value": 400,
+        "question": "Which film features \"Mitwa\"?",
+        "answer": "Kabhi Alvida Naa Kehna",
+        "bonus": "Sing the \"Mitwa\" hook line with arms out, full emotion",
+        "bonusPoints": 50
+      },
+      {
+        "value": 500,
+        "question": "Which 1998 film featured the song \"Chamma Chamma\", later reused in a Hollywood film?",
+        "answer": "China Gate (reused in Moulin Rouge!)",
+        "bonus": "Do the \"Chamma Chamma\" hook step",
+        "bonusPoints": 50
+      }
+    ]
+  }
+]

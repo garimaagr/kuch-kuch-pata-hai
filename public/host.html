@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kuch Kuch Pata Hai — Host</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="host">
+  <header>
+    <h1 class="logo">🎬 Kuch Kuch <span>Pata Hai</span></h1>
+    <div class="row" style="margin:0">
+      <button id="switchBoard" class="secondary hidden"></button>
+      <button id="toSparkle" class="hidden">✨ Sparkle Round</button>
+      <button id="toLobby" class="secondary hidden">Lobby / teams</button>
+      <button id="mute" class="secondary" title="Sound on/off">🔊</button>
+      <button id="newGame" class="secondary">New game</button>
+    </div>
+  </header>
+
+  <section id="start" class="hero">
+    <div class="marquee"><div class="hero-title">Kuch Kuch <span>Pata Hai</span></div></div>
+    <p class="muted">Bollywood trivia night · buzz in from your phone</p>
+    <button id="startBig" class="big">🎬 Start a new game</button>
+  </section>
+
+  <!-- Lobby -->
+  <section id="lobby" class="hidden">
+    <div class="lobby-top">
+      <img id="qr" alt="QR code to join">
+      <div>
+        <div class="muted">Scan to join, or go to</div>
+        <div id="joinUrl" style="font-size:1.3rem"></div>
+        <div class="muted">Room code</div>
+        <div id="code" class="code"></div>
+      </div>
+    </div>
+
+    <h2>Players (<span id="playerCount">0</span>)</h2>
+    <div id="unassigned"></div>
+
+    <div class="row">
+      <label>Teams:
+        <select id="teamCount">
+          <option>2</option><option>3</option><option>4</option>
+        </select>
+      </label>
+      <button id="makeTeams">Make random teams</button>
+      <button id="toBoard" class="hidden">Go to the board →</button>
+    </div>
+    <div id="teams" class="teams"></div>
+  </section>
+
+  <!-- Board -->
+  <section id="board" class="hidden">
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <!-- Question -->
+  <section id="question" class="hidden">
+    <div class="muted" id="qCategory"></div>
+    <div class="muted" id="qNote"></div>
+    <div class="row">
+      <span id="buzzBadge" class="badge closed">Closed</span>
+      <button id="openBuzzers">Open buzzers</button>
+      <button id="correct">✅ Correct</button>
+      <button id="wrong">❌ Wrong</button>
+      <button id="showAnswer" class="secondary">Show answer</button>
+      <button id="backToBoard" class="secondary">Back to board</button>
+    </div>
+    <div class="row" id="funnyRow"></div>
+    <div id="qText" class="qtext"></div>
+    <div id="qAnswer" class="qanswer hidden"></div>
+
+    <ol id="order" class="order"></ol>
+  </section>
+
+  <!-- Bonus challenge (after a correct answer) -->
+  <section id="bonus" class="hidden">
+    <div class="card-type" id="bonusFor"></div>
+    <div class="qtext" id="bonusText"></div>
+    <div class="row">
+      <button id="bonusDone"></button>
+      <button id="bonusSkip" class="secondary">Skip bonus</button>
+    </div>
+  </section>
+
+  <!-- Sparkle Round -->
+  <section id="sparkle" class="hidden">
+    <div class="row">
+      <h2 class="sparkle-title" style="margin-right:auto">✨ Sparkle Round ✨</h2>
+      <button id="skipSparkle" class="secondary">Skip Sparkle</button>
+    </div>
+
+    <div id="spSetup">
+      <h3>1. Which team?</h3>
+      <div id="spTeams" class="row"></div>
+      <h3>2. Which mode?</h3>
+      <div id="spModes" class="row"></div>
+      <div id="spLevelStep" class="hidden">
+        <h3>3. How hard?</h3>
+        <div id="spLevels" class="row"></div>
+      </div>
+      <div id="spPerformerStep" class="hidden">
+        <h3 id="spPerformerPrompt"></h3>
+        <div id="spPlayers" class="row"></div>
+      </div>
+      <p id="spEmpty" class="muted hidden">No cards left in this mode. Pick another mode.</p>
+    </div>
+
+    <div id="spCard" class="hidden">
+      <div class="card-type" id="spType"></div>
+      <div class="qtext" id="spText"></div>
+      <div class="timer" id="spTimer"></div>
+      <div class="row">
+        <button id="timerStart">▶ Start timer</button>
+        <button id="timerStop" class="secondary">⏸ Stop timer</button>
+        <button id="skipCard" class="secondary">Skip card</button>
+      </div>
+      <div class="row">
+        <span class="muted">Points for <span id="spTeamName"></span>:</span>
+        <button id="spGuessed" class="hidden">🎉 Guessed!</button>
+        <span id="spPresets" class="row" style="margin:0">
+          <button data-points="25">+25</button>
+          <button data-points="50">+50</button>
+          <button data-points="100">+100</button>
+        </span>
+        <input id="spCustom" type="number" step="5" placeholder="other" style="width:6em;margin:0">
+        <button id="spCustomGive" class="secondary">Give</button>
+        <button data-points="0" class="secondary">No points</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scores -->
+  <footer id="scores" class="scores hidden"></footer>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/fx.js"></script>
+  <script src="/host.js"></script>
+</body>
+</html>
