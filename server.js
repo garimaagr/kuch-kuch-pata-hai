@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const http = require('http');
@@ -6,6 +7,7 @@ const path = require('path');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
 const buzz = require('./buzz');
+const { makeLimiter, cleanText } = require('./limits');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -13,12 +15,33 @@ const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
 
 // The Sparkle Round starts by itself after every this many finished board questions.
-const SPARKLE_EVERY = 4;
+const SPARKLE_EVERY = 6;
+
+// ---- Limits (the hosted server is public and small) ----
+const MAX_ROOMS = 20;
+const MAX_PLAYERS = 30; // per room
+const ROOM_IDLE_MS = 3 * 60 * 60 * 1000; // rooms with no activity for 3 hours are deleted
+const EVENTS_PER_SECOND = 20; // per socket; extra events are dropped
+const MAX_MESSAGE_BYTES = 300 * 1024;
+// Optional: set HOST_PIN on the server and /host asks for it before starting a game.
+const HOST_PIN = process.env.HOST_PIN || '';
+const roomCreation = makeLimiter(5, 10 * 60 * 1000); // 5 new games per IP per 10 minutes
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { maxHttpBufferSize: MAX_MESSAGE_BYTES });
 const pub = path.join(__dirname, 'public');
 
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set({
+    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+  });
+  next();
+});
+app.use(express.json({ limit: '300kb' }));
 app.use(express.static(pub));
 app.get('/', (req, res) => res.redirect('/host'));
 app.get('/host', (req, res) => res.sendFile(path.join(pub, 'host.html')));
@@ -94,7 +117,34 @@ function hostState(room) {
   };
 }
 
+// Deletes rooms nobody has used for a while, so memory stays small.
+function cleanupRooms(now = Date.now()) {
+  for (const [code, room] of rooms) {
+    if (now - room.lastActive > ROOM_IDLE_MS) {
+      io.in(code).disconnectSockets(true);
+      io.in(code + ':host').disconnectSockets(true);
+      rooms.delete(code);
+    }
+  }
+  roomCreation.prune(now);
+}
+setInterval(cleanupRooms, 10 * 60 * 1000).unref();
+
+// The visitor's IP. On Render the real one is the first entry of X-Forwarded-For.
+function clientIp(socket) {
+  const xff = socket.handshake.headers['x-forwarded-for'];
+  return (PUBLIC_URL && xff ? String(xff).split(',')[0].trim() : socket.handshake.address) || 'unknown';
+}
+
+// Constant-time comparison for the host secret.
+function sameSecret(a, b) {
+  const x = Buffer.from(String(a || ''));
+  const y = Buffer.from(String(b || ''));
+  return x.length === y.length && x.length > 0 && crypto.timingSafeEqual(x, y);
+}
+
 function send(room) {
+  room.lastActive = Date.now();
   // The secret movie title goes only to the performer's phone, never to the TV.
   const card = sparkleCard(room);
   if (card && SECRET_MODES.includes(room.sparkle.mode)) {
@@ -225,15 +275,47 @@ function smallestTeam(room) {
 
 // ---- Sockets ----
 io.on('connection', (socket) => {
+  // Host controls only work on a socket that proved it knows the room's host secret.
   const hostRoom = () => (socket.data.role === 'host' ? rooms.get(socket.data.code) : null);
 
-  socket.on('host:new', async (cb) => {
+  // Drop events beyond EVENTS_PER_SECOND on this socket.
+  let windowStart = 0;
+  let count = 0;
+  socket.use((packet, next) => {
+    const now = Date.now();
+    if (now - windowStart > 1000) { windowStart = now; count = 0; }
+    if (++count <= EVENTS_PER_SECOND) next();
+  });
+
+  // Every handler is wrapped, so a bad message can never crash the server.
+  const on = (event, fn) => socket.on(event, (...args) => {
+    try {
+      Promise.resolve(fn(...args)).catch((err) => console.error(`Error in ${event}:`, err.message));
+    } catch (err) {
+      console.error(`Error in ${event}:`, err.message);
+    }
+  });
+  const reply = (cb, value) => { if (typeof cb === 'function') cb(value); };
+
+  on('host:new', async (opts, cb) => {
+    if (typeof opts === 'function') { cb = opts; opts = {}; }
+    if (HOST_PIN && !sameSecret(opts?.pin, HOST_PIN)) {
+      return reply(cb, { ok: false, needPin: true, error: opts?.pin ? 'Wrong PIN. Try again.' : null });
+    }
+    // Only limited when hosted: on home wifi it's just your own laptop.
+    if (PUBLIC_URL && !roomCreation.allow(clientIp(socket))) {
+      return reply(cb, { ok: false, error: 'Too many new games from this network. Please wait 10 minutes and try again.' });
+    }
+    cleanupRooms();
+    if (rooms.size >= MAX_ROOMS) {
+      return reply(cb, { ok: false, error: 'Too many games are running right now. Please try again later.' });
+    }
     const code = makeCode();
     let joinUrl;
     if (PUBLIC_URL) joinUrl = `${PUBLIC_URL}/join/${code}`; // hosted: use the public address
     else {
       const ip = wifiIp(); // checked each game, in case the laptop changed networks
-      if (!ip) return cb?.({ ok: false, error: "This laptop isn't connected to wifi, so phones can't reach it. Connect to your home wifi and click New game again." });
+      if (!ip) return reply(cb, { ok: false, error: "This laptop isn't connected to wifi, so phones can't reach it. Connect to your home wifi and click New game again." });
       joinUrl = `http://${ip}:${PORT}/join/${code}`;
     }
     let boards, decks;
@@ -242,10 +324,10 @@ io.on('connection', (socket) => {
       boards = loadQuestions();
       decks = loadDecks();
     } catch (err) {
-      return cb?.({ ok: false, error: 'Could not read questions.json, questions-2.json or dares.json: ' + err.message });
+      return reply(cb, { ok: false, error: 'Could not read questions.json, questions-2.json or dares.json: ' + err.message });
     }
     const room = {
-      code, joinUrl, players: new Map(), teams: [], buzz: buzz.newBuzz(),
+      code, joinUrl, hostSecret: crypto.randomBytes(18).toString('base64url'), lastActive: Date.now(), players: new Map(), teams: [], buzz: buzz.newBuzz(),
       screen: 'lobby', boards, usedBy: boards.map(() => []), boardNo: 0,
       board: boards[0], used: null, current: null, showAnswer: false,
       finished: 0, sparkleDue: false, bonus: null,
@@ -256,27 +338,28 @@ io.on('connection', (socket) => {
     rooms.set(code, room);
     socket.data = { role: 'host', code };
     socket.join(code + ':host');
-    cb?.({ ok: true, code, qr: room.qr });
+    reply(cb, { ok: true, code, secret: room.hostSecret, qr: room.qr });
     send(room);
   });
 
-  socket.on('host:resume', (code, cb) => {
+  // Reconnecting host: needs the room code and the secret it got from host:new.
+  on('host:resume', ({ code, secret } = {}, cb) => {
     const room = rooms.get(String(code || '').toUpperCase());
-    if (!room) return cb?.({ ok: false });
+    if (!room || !sameSecret(secret, room.hostSecret)) return reply(cb, { ok: false });
     socket.data = { role: 'host', code: room.code };
     socket.join(room.code + ':host');
-    cb?.({ ok: true, code: room.code, qr: room.qr });
+    reply(cb, { ok: true, code: room.code, secret: room.hostSecret, qr: room.qr });
     send(room);
   });
 
-  socket.on('host:makeTeams', (count) => {
+  on('host:makeTeams', (count) => {
     const room = hostRoom();
     if (!room) return;
     makeTeams(room, count);
     send(room);
   });
 
-  socket.on('host:movePlayer', ({ playerId, teamId }) => {
+  on('host:movePlayer', ({ playerId, teamId }) => {
     const room = hostRoom();
     const p = room?.players.get(playerId);
     if (!p || !room.teams.some((t) => t.id === teamId)) return;
@@ -284,14 +367,14 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  socket.on('host:openBuzzers', () => {
+  on('host:openBuzzers', () => {
     const room = hostRoom();
     if (!room) return;
     buzz.openBuzzers(room.buzz);
     send(room);
   });
 
-  socket.on('host:resetBuzzers', () => {
+  on('host:resetBuzzers', () => {
     const room = hostRoom();
     if (!room) return;
     buzz.resetBuzz(room.buzz);
@@ -299,7 +382,7 @@ io.on('connection', (socket) => {
   });
 
   // ---- Board and scoring ----
-  socket.on('host:screen', (screen) => {
+  on('host:screen', (screen) => {
     const room = hostRoom();
     if (!room || !['lobby', 'board', 'sparkle'].includes(screen)) return;
     room.screen = screen;
@@ -308,7 +391,7 @@ io.on('connection', (socket) => {
   });
 
   // Switch boards; scores and each board's used tiles are kept.
-  socket.on('host:switchBoard', (n) => {
+  on('host:switchBoard', (n) => {
     const room = hostRoom();
     if (!room || room.current || room.bonus || !room.boards[n]) return;
     room.boardNo = n;
@@ -317,7 +400,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  socket.on('host:pickTile', ({ cat, idx } = {}) => {
+  on('host:pickTile', ({ cat, idx } = {}) => {
     const room = hostRoom();
     if (!room || room.current || room.bonus || !room.board[cat]?.questions[idx] || room.used.includes(`${cat}-${idx}`)) return;
     room.current = { cat, idx };
@@ -326,7 +409,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  socket.on('host:correct', () => {
+  on('host:correct', () => {
     const room = hostRoom();
     const turn = room && buzz.currentTurn(room.buzz);
     const team = turn && room.teams.find((t) => t.id === turn.teamId);
@@ -339,7 +422,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  socket.on('host:wrong', () => {
+  on('host:wrong', () => {
     const room = hostRoom();
     const turn = room && buzz.currentTurn(room.buzz);
     const team = turn && room.teams.find((t) => t.id === turn.teamId);
@@ -349,14 +432,14 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  socket.on('host:showAnswer', () => {
+  on('host:showAnswer', () => {
     const room = hostRoom();
     if (!room?.current) return;
     room.showAnswer = true;
     send(room);
   });
 
-  socket.on('host:backToBoard', () => {
+  on('host:backToBoard', () => {
     const room = hostRoom();
     if (!room?.current) return;
     finishQuestion(room, room.showAnswer); // only counts toward the Sparkle Round if the answer was shown
@@ -365,7 +448,7 @@ io.on('connection', (socket) => {
   });
 
   // 😂 +5 for a funny wrong answer. Any team, any number of times.
-  socket.on('host:funny', (teamId) => {
+  on('host:funny', (teamId) => {
     const room = hostRoom();
     const team = room?.teams.find((t) => t.id === teamId);
     if (!team || !room.current) return;
@@ -374,7 +457,7 @@ io.on('connection', (socket) => {
     flash(room, team.id, '+5 😂');
   });
 
-  socket.on('host:bonus', (done) => {
+  on('host:bonus', (done) => {
     const room = hostRoom();
     const b = room?.bonus;
     if (!b) return;
@@ -385,10 +468,10 @@ io.on('connection', (socket) => {
     if (done) flash(room, b.teamId, `+${b.points} ⭐`);
   });
 
-  socket.on('host:adjustScore', ({ teamId, delta } = {}) => {
+  on('host:adjustScore', ({ teamId, delta } = {}) => {
     const room = hostRoom();
     const team = room?.teams.find((t) => t.id === teamId);
-    if (!team || !Number.isFinite(delta)) return;
+    if (!team || !Number.isFinite(delta) || Math.abs(delta) > 1000) return;
     team.score += delta;
     send(room);
   });
@@ -401,7 +484,7 @@ io.on('connection', (socket) => {
     return room?.screen === 'sparkle' && room.sparkle ? room : null;
   };
 
-  socket.on('host:sparkleTeam', (teamId) => {
+  on('host:sparkleTeam', (teamId) => {
     const room = sparkleRoom();
     if (!room || room.sparkle.cardIdx != null || !room.teams.some((t) => t.id === teamId)) return;
     room.sparkle.teamId = teamId;
@@ -409,7 +492,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  socket.on('host:sparkleMode', (mode) => {
+  on('host:sparkleMode', (mode) => {
     const room = sparkleRoom();
     if (!room || room.sparkle.cardIdx != null || !MODES.includes(mode)) return;
     room.sparkle.mode = mode;
@@ -419,16 +502,16 @@ io.on('connection', (socket) => {
   });
 
   // Draw only: the team picks a difficulty.
-  socket.on('host:sparkleLevel', (level) => {
+  on('host:sparkleLevel', (level) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
-    if (!s || s.cardIdx != null || s.mode !== 'draw' || !(level in DRAW_LEVELS)) return;
+    if (!s || s.cardIdx != null || s.mode !== 'draw' || !Object.hasOwn(DRAW_LEVELS, level)) return;
     s.level = level;
     s.empty = false;
     send(room);
   });
 
-  socket.on('host:sparklePerformer', (playerId) => {
+  on('host:sparklePerformer', (playerId) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     const p = room?.players.get(playerId);
@@ -438,14 +521,14 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  socket.on('host:skipCard', () => {
+  on('host:skipCard', () => {
     const room = sparkleRoom();
     if (!room?.sparkle.performerId) return;
     drawCard(room);
     send(room);
   });
 
-  socket.on('host:timer', (action) => {
+  on('host:timer', (action) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     if (!s || s.cardIdx == null) return;
@@ -470,7 +553,7 @@ io.on('connection', (socket) => {
   }
 
   // The host chooses the points (preset buttons or a custom amount), then it's back to the board.
-  socket.on('host:sparklePoints', (points) => {
+  on('host:sparklePoints', (points) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     points = Math.round(Number(points));
@@ -479,22 +562,23 @@ io.on('connection', (socket) => {
   });
 
   // Draw: "Guessed" adds the card's difficulty points automatically.
-  socket.on('host:sparkleGuessed', () => {
+  on('host:sparkleGuessed', () => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     if (!s || s.mode !== 'draw' || s.cardIdx == null) return;
     awardSparkle(room, DRAW_LEVELS[s.level]);
   });
 
-  socket.on('player:join', ({ code, playerId, name } = {}, cb) => {
+  on('player:join', ({ code, playerId, name } = {}, cb) => {
     const room = rooms.get(String(code || '').toUpperCase());
-    if (!room) return cb?.({ ok: false, error: 'Game not found. Ask the host for the new code.' });
-    name = String(name || '').trim().slice(0, 20);
-    playerId = String(playerId || '').slice(0, 40);
-    if (!name || !playerId) return cb?.({ ok: false, error: 'Please enter a name.' });
+    if (!room) return reply(cb, { ok: false, error: 'Game not found. Ask the host for the new code.' });
+    name = cleanText(name, 20);
+    playerId = cleanText(playerId, 40);
+    if (!name || !playerId) return reply(cb, { ok: false, error: 'Please enter a name.' });
 
     let p = room.players.get(playerId);
     if (!p) {
+      if (room.players.size >= MAX_PLAYERS) return reply(cb, { ok: false, error: `This game is full (${MAX_PLAYERS} players).` });
       p = { id: playerId, name, teamId: room.teams.length ? smallestTeam(room) : null };
       room.players.set(playerId, p);
     }
@@ -503,18 +587,18 @@ io.on('connection', (socket) => {
     p.connected = true;
     socket.data = { role: 'player', code: room.code, playerId };
     socket.join(room.code);
-    cb?.({ ok: true });
+    reply(cb, { ok: true });
     send(room);
   });
 
-  socket.on('player:buzz', () => {
+  on('player:buzz', () => {
     const room = rooms.get(socket.data.code);
     const p = room?.players.get(socket.data.playerId);
     if (!p) return;
     if (buzz.tryBuzz(room.buzz, p.teamId, p.id)) send(room);
   });
 
-  socket.on('disconnect', () => {
+  on('disconnect', () => {
     const room = rooms.get(socket.data.code);
     const p = room?.players.get(socket.data.playerId);
     if (p && p.socketId === socket.id) {

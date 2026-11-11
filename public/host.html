@@ -22,6 +22,12 @@
     <div class="marquee"><div class="hero-title">Kuch Kuch <span>Pata Hai</span></div></div>
     <p class="muted">Bollywood trivia night · buzz in from your phone</p>
     <button id="startBig" class="big">🎬 Start a new game</button>
+    <div id="pinBox" class="pin hidden">
+      <p class="muted">This server needs the host PIN to start a game.</p>
+      <input id="pin" type="password" maxlength="40" autocomplete="off" placeholder="Host PIN">
+      <button id="pinGo">Start</button>
+      <div id="pinError" class="pin-error"></div>
+    </div>
   </section>
 
   <!-- Lobby -->

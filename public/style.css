@@ -260,3 +260,9 @@ body.redflash::after { animation: redflash 0.6s ease-out; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Host PIN (only when HOST_PIN is set on the server) */
+.pin { max-width: 320px; margin: 1.5rem auto 0; display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+.pin p { width: 100%; margin: 0; }
+.pin input { flex: 1; margin: 0; }
+.pin-error { width: 100%; color: #ff6b6b; font-weight: 700; min-height: 1.2em; }

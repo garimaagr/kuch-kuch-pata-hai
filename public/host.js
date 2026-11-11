@@ -1,13 +1,31 @@
 const socket = io();
 const $ = (id) => document.getElementById(id);
 const show = (id, on) => $(id).classList.toggle('hidden', !on);
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// Builds an element. All text goes in as text nodes, never as HTML.
+//   h('button', { class: 'pick', data: { team: 1 }, vars: { '--c': '#f00' }, disabled: true }, 'Label')
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'data') for (const [dk, dv] of Object.entries(v)) el.dataset[dk] = dv;
+    else if (k === 'vars') for (const [name, val] of Object.entries(v)) el.style.setProperty(name, val);
+    else if (k === 'color') el.style.color = v;
+    else if (k === 'disabled' || k === 'selected') el[k] = true;
+    else el.setAttribute(k, v);
+  }
+  el.append(...kids.flat().filter((x) => x != null && x !== false).map((x) => (typeof x === 'number' ? String(x) : x)));
+  return el;
+}
+const fill = (id, ...kids) => $(id).replaceChildren(...kids.flat());
 const emit = (ev, data) => () => socket.emit(ev, data);
 
 function load(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function save(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
 
 let code = load('fbHostCode');
+let secret = load('fbHostSecret'); // proves to the server that this laptop is the host
 let qr = null;
 let state = null;
 let sparkleEndsAt = null; // local clock time when the timer runs out (only while running)
@@ -32,18 +50,32 @@ const cardsLeft = (mode, level) => mode === 'draw'
   : state.deckLeft[mode];
 
 function gotRoom(res) {
+  if (res.needPin) {
+    show('pinBox', true);
+    $('pinError').textContent = res.error || '';
+    $('pin').focus();
+    return;
+  }
   if (!res.ok) {
     if (res.error) alert(res.error);
-    code = null; save('fbHostCode', null); state = null; render(); return;
+    if (state) return; // keep the current game going
+    code = secret = null; save('fbHostCode', null); save('fbHostSecret', null); render(); return;
   }
+  show('pinBox', false);
   code = res.code;
+  secret = res.secret;
   qr = res.qr;
   save('fbHostCode', code);
+  save('fbHostSecret', secret);
+}
+
+function startNewGame() {
+  socket.emit('host:new', { pin: $('pin').value }, gotRoom);
 }
 
 // Runs on first connect and after every reconnect.
 socket.on('connect', () => {
-  if (code) socket.emit('host:resume', code, gotRoom);
+  if (code && secret) socket.emit('host:resume', { code, secret }, gotRoom);
   else render();
 });
 socket.on('state', (s) => {
@@ -54,7 +86,7 @@ socket.on('state', (s) => {
 
 // Quick "+5 😂" flash next to a team's score.
 socket.on('flash', ({ teamId, text }) => {
-  const box = document.querySelector(`.score[data-score-team="${teamId}"]`);
+  const box = [...document.querySelectorAll('.score')].find((el) => el.dataset.scoreTeam === String(teamId));
   if (!box) return;
   const r = box.getBoundingClientRect();
   const el = document.createElement('div');
@@ -68,8 +100,10 @@ socket.on('flash', ({ teamId, text }) => {
 
 $('newGame').onclick = () => {
   if (state && !confirm('Start a new game? The current game will be left behind.')) return;
-  socket.emit('host:new', gotRoom);
+  startNewGame();
 };
+$('pinGo').onclick = startNewGame;
+$('pin').onkeydown = (e) => { if (e.key === 'Enter') startNewGame(); };
 $('makeTeams').onclick = () => socket.emit('host:makeTeams', Number($('teamCount').value));
 $('toBoard').onclick = emit('host:screen', 'board');
 $('startBig').onclick = () => $('newGame').click();
@@ -180,32 +214,32 @@ function render() {
   show('toBoard', hasTeams);
   if (hasTeams) $('teamCount').value = state.teams.length;
 
-  const chip = (p) => `<span class="chip ${p.connected ? '' : 'off'} ${seen.has(p.id) ? '' : 'pop'}">${esc(p.name)}</span>`;
-  $('unassigned').innerHTML = state.players.filter((p) => p.teamId == null).map(chip).join('') ||
-    (hasTeams ? '' : '<p class="muted">Waiting for players to join…</p>');
+  const chip = (p) => h('span', { class: `chip ${p.connected ? '' : 'off'} ${seen.has(p.id) ? '' : 'pop'}` }, p.name);
+  const unassigned = state.players.filter((p) => p.teamId == null).map(chip);
+  fill('unassigned', unassigned.length ? unassigned : hasTeams ? [] : h('p', { class: 'muted' }, 'Waiting for players to join…'));
 
-  $('teams').innerHTML = state.teams.map((t) => {
-    const items = state.players.filter((p) => p.teamId === t.id).map((p) => `
-      <li class="${p.connected ? '' : 'off'} ${seen.has(p.id) ? '' : 'pop'}">${esc(p.name)}
-        <select data-player="${esc(p.id)}" title="Move to team">
-          ${state.teams.map((o) => `<option value="${o.id}" ${o.id === t.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}
-        </select>
-      </li>`).join('');
-    return `<div class="team" style="--c:${t.color}"><h3>${esc(t.name)}</h3><ul>${items || '<li class="muted">nobody yet</li>'}</ul></div>`;
-  }).join('');
+  fill('teams', state.teams.map((t) => {
+    const items = state.players.filter((p) => p.teamId === t.id).map((p) =>
+      h('li', { class: `${p.connected ? '' : 'off'} ${seen.has(p.id) ? '' : 'pop'}` }, p.name, ' ',
+        h('select', { data: { player: p.id }, title: 'Move to team' },
+          state.teams.map((o) => h('option', { value: o.id, selected: o.id === t.id }, o.name)))));
+    return h('div', { class: 'team', vars: { '--c': t.color } },
+      h('h3', {}, t.name),
+      h('ul', {}, items.length ? items : h('li', { class: 'muted' }, 'nobody yet')));
+  }));
 
   // ---- Board ----
   $('grid').style.gridTemplateColumns = `repeat(${state.board.length}, 1fr)`;
   const rows = Math.max(...state.board.map((c) => c.values.length));
-  let html = state.board.map((c) => `<div class="cat">${esc(c.category)}</div>`).join('');
+  const cells = state.board.map((c) => h('div', { class: 'cat' }, c.category));
   for (let i = 0; i < rows; i++) {
-    html += state.board.map((c, ci) => {
-      if (c.values[i] == null) return '<div></div>';
+    state.board.forEach((c, ci) => {
+      if (c.values[i] == null) return cells.push(h('div'));
       const used = state.used.includes(`${ci}-${i}`);
-      return `<button class="tile" style="--i:${i + ci}" data-cat="${ci}" data-idx="${i}" ${used ? 'disabled' : ''}>${c.values[i]}</button>`;
-    }).join('');
+      cells.push(h('button', { class: 'tile', vars: { '--i': i + ci }, data: { cat: ci, idx: i }, disabled: used }, c.values[i]));
+    });
   }
-  $('grid').innerHTML = html;
+  fill('grid', cells);
 
   // ---- Question ----
   const q = state.current;
@@ -224,19 +258,20 @@ function render() {
     $('buzzBadge').className = 'badge ' + (b.open ? 'open' : 'closed');
     $('openBuzzers').disabled = b.open;
     $('correct').disabled = $('wrong').disabled = !turn;
-    $('funnyRow').innerHTML = state.teams.map((t) =>
-      `<button class="funny" style="--c:${t.color}" data-funny="${t.id}">😂 +5 ${esc(t.name)}</button>`).join('');
-    $('order').innerHTML = b.order.map((e) => {
+    fill('funnyRow', state.teams.map((t) =>
+      h('button', { class: 'funny', vars: { '--c': t.color }, data: { funny: t.id } }, `😂 +5 ${t.name}`)));
+    const order = b.order.map((e) => {
       const t = teamOf(e.teamId);
       const cls = b.locked.includes(e.teamId) ? 'locked' : e === turn ? 'turn' : '';
-      return `<li class="${cls}"><span style="color:${t?.color}">${esc(t?.name || '?')}</span> — ${esc(playerOf(e.playerId)?.name || '?')}</li>`;
-    }).join('') || (b.open ? '<p class="muted">Waiting for a buzz…</p>' : '');
+      return h('li', { class: cls }, h('span', { color: t?.color }, t?.name || '?'), ` — ${playerOf(e.playerId)?.name || '?'}`);
+    });
+    fill('order', order.length ? order : b.open ? h('p', { class: 'muted' }, 'Waiting for a buzz…') : []);
   }
 
   // ---- Bonus ----
   if (state.bonus) {
     const t = teamOf(state.bonus.teamId);
-    $('bonusFor').innerHTML = `⭐ BONUS for <span style="color:${t?.color}">${esc(t?.name || '?')}</span>:`;
+    fill('bonusFor', '⭐ BONUS for ', h('span', { color: t?.color }, t?.name || '?'), ':');
     $('bonusText').textContent = state.bonus.text;
     $('bonusDone').textContent = `Bonus done +${state.bonus.points}`;
   }
@@ -248,23 +283,25 @@ function render() {
     show('spSetup', !sp.hasCard);
     show('spCard', sp.hasCard);
 
-    $('spTeams').innerHTML = state.teams.map((t) =>
-      `<button class="pick ${sp.teamId === t.id ? 'selected' : ''}" style="--c:${t.color}" data-team="${t.id}">${esc(t.name)}</button>`).join('');
-    $('spModes').innerHTML = Object.entries(MODES).map(([m, info]) =>
-      `<button class="pick ${sp.mode === m ? 'selected' : ''}" data-mode="${m}" ${cardsLeft(m) ? '' : 'disabled'}>${info.label} <small>(${cardsLeft(m)} left)</small></button>`).join('');
+    fill('spTeams', state.teams.map((t) =>
+      h('button', { class: `pick ${sp.teamId === t.id ? 'selected' : ''}`, vars: { '--c': t.color }, data: { team: t.id } }, t.name)));
+    fill('spModes', Object.entries(MODES).map(([m, info]) =>
+      h('button', { class: `pick ${sp.mode === m ? 'selected' : ''}`, data: { mode: m }, disabled: !cardsLeft(m) },
+        info.label, ' ', h('small', {}, `(${cardsLeft(m)} left)`))));
 
     const isDraw = sp.mode === 'draw';
     show('spLevelStep', isDraw);
-    $('spLevels').innerHTML = Object.entries(LEVELS).map(([l, info]) =>
-      `<button class="pick ${sp.level === l ? 'selected' : ''}" data-level="${l}" ${cardsLeft('draw', l) ? '' : 'disabled'}>${info.label} (${info.points}) <small>(${cardsLeft('draw', l)} left)</small></button>`).join('');
+    fill('spLevels', Object.entries(LEVELS).map(([l, info]) =>
+      h('button', { class: `pick ${sp.level === l ? 'selected' : ''}`, data: { level: l }, disabled: !cardsLeft('draw', l) },
+        `${info.label} (${info.points}) `, h('small', {}, `(${cardsLeft('draw', l)} left)`))));
 
     show('spPerformerStep', !!team && !!sp.mode && (!isDraw || !!sp.level));
     show('spEmpty', sp.empty);
     if (team) {
       $('spPerformerPrompt').textContent = `${sp.mode === 'draw' ? 4 : 3}. ${team.name}, choose your performer (tap their name):`;
-      $('spPlayers').innerHTML = state.players.filter((p) => p.teamId === team.id).map((p) =>
-        `<button class="pick" style="--c:${team.color}" data-player="${esc(p.id)}">${esc(p.name)}</button>`).join('') ||
-        '<span class="muted">This team has no players.</span>';
+      const performers = state.players.filter((p) => p.teamId === team.id).map((p) =>
+        h('button', { class: 'pick', vars: { '--c': team.color }, data: { player: p.id } }, p.name));
+      fill('spPlayers', performers.length ? performers : h('span', { class: 'muted' }, 'This team has no players.'));
     }
 
     if (sp.hasCard) {
@@ -287,13 +324,13 @@ function render() {
 
   // ---- Scores ----
   const oldPts = new Map([...document.querySelectorAll('.score')].map((el) => [el.dataset.scoreTeam, el.dataset.pts]));
-  $('scores').innerHTML = state.teams.map((t) => `
-    <div class="score" data-score-team="${t.id}" data-pts="${t.score}" style="--c:${t.color}">
-      <div class="score-name">${esc(t.name)}</div>
-      <div class="score-pts">${t.score}</div>
-      <div><button class="secondary" data-team="${t.id}" data-delta="-100">−</button>
-           <button class="secondary" data-team="${t.id}" data-delta="100">+</button></div>
-    </div>`).join('');
+  fill('scores', state.teams.map((t) =>
+    h('div', { class: 'score', data: { scoreTeam: t.id, pts: t.score }, vars: { '--c': t.color } },
+      h('div', { class: 'score-name' }, t.name),
+      h('div', { class: 'score-pts' }, t.score),
+      h('div', {},
+        h('button', { class: 'secondary', data: { team: t.id, delta: -100 } }, '−'), ' ',
+        h('button', { class: 'secondary', data: { team: t.id, delta: 100 } }, '+')))));
 
   effects(screen, oldPts);
 }

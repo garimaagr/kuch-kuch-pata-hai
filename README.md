@@ -33,7 +33,7 @@ It prints something like:
    - **Show answer** and **Back to board** when you're done. Used tiles go grey.
    - Fix any mistakes with the **− / +** buttons under each team's score.
    - **Board 2 →** (top right) switches to the second board, and **← Board 1** goes back. Scores carry over, and each board remembers its used tiles.
-5. **✨ Sparkle Round** starts by itself after every 4 finished questions (answered correctly, or answer shown). You can also open it with the **✨ Sparkle Round** button on the board, or leave it with **Skip Sparkle**.
+5. **✨ Sparkle Round** starts by itself after every 6 finished questions (answered correctly, or answer shown). You can also open it with the **✨ Sparkle Round** button on the board, or leave it with **Skip Sparkle**.
    - Pick the team, then the mode: 🎨 **Draw (Diwali)**, 🤐 **Dumb Charades** or 🎭 **Mimic**. For Draw, the team also picks a difficulty: 🌶️ Easy (50), 🌶️🌶️ Medium (100) or 🌶️🌶️🌶️ Tricky (200). The team chooses its performer, and you tap their name to draw a card. **Skip card** draws another.
    - Draw / Dumb Charades: the secret word or movie shows only on the performer's phone. Draw on paper or a whiteboard. For Draw, the TV shows the difficulty and points, and **🎉 Guessed!** adds them automatically.
    - Mimic: the prompt shows on the TV.
@@ -56,6 +56,11 @@ Hosted on Render, the game has a public https link, so phones can join on any ne
 - It **sleeps after about 15 minutes with no visitors**. Open the host page a minute before people arrive, because the first load can take 30–60 seconds.
 - The game lives in memory, so a redeploy or restart ends the current game. Don't push changes mid-game.
 - Anyone with the link could open the host page and start their own game. Your game's room code keeps theirs separate.
+
+**Keeping the public link safe**
+- Only the laptop that clicked **New game** can run that game. It keeps a secret key, so seeing the room code on the TV isn't enough to take over.
+- **Optional host PIN:** in Render, open the service → **Environment** → **Add Environment Variable**, set `HOST_PIN` to a number you choose, and save. After that, `/host` asks for the PIN before starting a game. Leave it unset for no PIN.
+- Built-in limits: at most 20 games at once, 30 players per game, 5 new games per network every 10 minutes, and games idle for 3 hours are deleted.
 
 ## Game night checklist (home wifi)
 
