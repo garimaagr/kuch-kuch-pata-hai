@@ -76,7 +76,7 @@ function render() {
   show('nameForm', !name || (error && !joined));
   if (!name) $('nameInput').value = '';
 
-  $('top').textContent = team ? team.name : '🎬 Kuch Kuch Pata Hai';
+  $('top').textContent = team ? team.name : 'BuzzIn';
   $('top').style.setProperty('--c', team ? team.color : '');
 
   if (error) { show('message', true); $('message').textContent = error; show('game', false); return; }

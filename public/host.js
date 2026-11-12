@@ -518,6 +518,7 @@ function render() {
 
   const hasTeams = state.teams.length > 0;
   $('makeTeams').textContent = hasTeams ? 'Reshuffle teams' : 'Make random teams';
+  $('makeTeams').classList.toggle('secondary', hasTeams); // once teams exist, "Go to the board" is the main button
   show('toBoard', hasTeams);
   if (hasTeams) $('teamCount').value = state.teams.length;
 

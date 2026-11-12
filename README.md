@@ -1,6 +1,6 @@
-# 🎬 Kuch Kuch Pata Hai
+# BuzzIn
 
-A Bollywood trivia board for a night with friends. The laptop runs the game and is shown on the TV; everyone buzzes in from their phone. Run it on your laptop over home wifi (no internet needed), or play online from Render.
+A trivia board for a night with friends. The laptop runs the game and is shown on the TV; everyone buzzes in from their phone. Run it on your laptop over home wifi (no internet needed), or play online from Render.
 
 ## Setup (once)
 
@@ -106,7 +106,7 @@ All content lives in **packs** in the `packs/` folder. `packs/desi.json` is Desi
 A pack looks like this:
 
 ```json
-{ "format": "buzz-pack-v2", "name": "Desi Night", "emoji": "🪔",
+{ "format": "buzz-pack-v2", "name": "Desi Night", "emoji": "🎬",
   "teams": ["Team Mogambo", "Team Basanti", "Team Gabbar", "Team Poo"],
   "boards": [ { "name": "Bollywood", "categories": [
     { "name": "Ek Tha Plot", "note": "optional hint for the host", "default": true, "questions": [

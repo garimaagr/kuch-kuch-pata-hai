@@ -245,7 +245,7 @@ function loadBuiltinPack(id, opts = {}) {
 
 // The theme cards on the setup screen, in order. A theme without a pack file shows as "coming soon".
 const THEMES = [
-  { id: 'desi', name: 'Desi Night', emoji: '🪔' },
+  { id: 'desi', name: 'Desi Night', emoji: '🎬' },
   { id: 'world', name: 'World Trivia', emoji: '🌍' },
   { id: 'tv', name: 'TV & Movies', emoji: '📺' },
   { id: 'sports', name: 'Sports', emoji: '🏆' },
@@ -728,7 +728,7 @@ server.on('error', (err) => {
 
 // 0.0.0.0 = listen on every network interface, so phones on the wifi can connect.
 server.listen(PORT, '0.0.0.0', () => {
-  console.log('\nKuch Kuch Pata Hai is running!\n');
+  console.log('\nBuzzIn is running!\n');
   if (PUBLIC_URL) return console.log(`  Hosted at ${PUBLIC_URL} (host page: ${PUBLIC_URL}/host)\n`);
   const ip = wifiIp();
   console.log(`  Open the host page on this laptop: http://localhost:${PORT}/host`);

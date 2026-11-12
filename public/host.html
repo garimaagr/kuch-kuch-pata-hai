@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kuch Kuch Pata Hai — Host</title>
+  <title>BuzzIn — Host</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="host">
   <header>
-    <h1 class="logo">🎬 Kuch Kuch <span>Pata Hai</span></h1>
-    <div class="row" style="margin:0">
+    <h1 class="logo"><img class="logo-mark" src="/logo.svg" alt=""><span class="logo-word">Buzz<span>In</span></span></h1>
+    <div class="row header-actions" style="margin:0">
       <button id="switchBoard" class="secondary hidden"></button>
       <button id="finishGame" class="secondary hidden">🏁 Finish game</button>
-      <button id="toSparkle" class="hidden">✨ Sparkle Round</button>
+      <button id="toSparkle" class="secondary hidden">✨ Sparkle Round</button>
       <button id="toLobby" class="secondary hidden">Lobby / teams</button>
       <button id="mute" class="secondary" title="Sound on/off">🔊</button>
       <button id="newGame" class="secondary">New game</button>
@@ -20,9 +21,10 @@
   </header>
 
   <section id="start" class="hero">
-    <div class="marquee"><div class="hero-title">Kuch Kuch <span>Pata Hai</span></div></div>
-    <p class="muted">Trivia night · buzz in from your phone</p>
-    <button id="startBig" class="big">🎬 Start a new game</button>
+    <img class="hero-mark" src="/logo.svg" alt="">
+    <div class="hero-title">Buzz<span>In</span></div>
+    <p class="muted">Trivia night for friends. Buzz in from your phone.</p>
+    <button id="startBig" class="big">Start a new game</button>
   </section>
 
   <!-- Setup: pick a theme, then Start (Customise is optional) -->
@@ -128,17 +130,18 @@
     <div class="muted" id="qCategory"></div>
     <div id="qNote" class="qnote hidden"></div>
     <div id="qDouble" class="double-banner hidden">💥 DOUBLE! Worth 2× (and costs 2× if wrong)</div>
-    <div class="row">
+    <div class="row controls">
       <span id="buzzBadge" class="badge closed">Closed</span>
       <button id="openBuzzers">Open buzzers</button>
-      <button id="correct">✅ Correct</button>
-      <button id="wrong">❌ Wrong</button>
+      <button id="correct" class="good">✓ Correct</button>
+      <button id="wrong" class="bad">✕ Wrong</button>
+      <span class="spacer"></span>
+      <button id="peek" class="secondary" title="Press and hold to see the answer (it shows on the TV while held)">👁 Hold to peek</button>
       <button id="showAnswer" class="secondary">Show answer</button>
       <button id="backToBoard" class="secondary">Back to board</button>
-      <button id="peek" class="secondary" title="Press and hold to see the answer (it shows on the TV while held)">👁 Hold to peek</button>
     </div>
     <div id="peekBox" class="peek hidden"></div>
-    <div class="row" id="funnyRow"></div>
+    <div class="row funny-row" id="funnyRow"></div>
     <div id="qText" class="qtext"></div>
     <div id="qAnswer" class="qanswer hidden"></div>
     <div id="qFact" class="qfact hidden"></div>
@@ -210,7 +213,7 @@
     <ol id="ranking" class="ranking"></ol>
     <div class="row center">
       <button id="winnerBack" class="secondary">← Back to the board</button>
-      <button id="winnerNew" class="big">🎬 New game</button>
+      <button id="winnerNew" class="big">New game</button>
     </div>
   </section>
   <div id="emojiRain" class="emoji-rain"></div>
