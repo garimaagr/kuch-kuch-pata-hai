@@ -597,3 +597,21 @@ body.remote button:disabled { opacity: 0.35; filter: grayscale(0.6); }
 .r-team { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 0.5rem 0.7rem; }
 #rStage .timer { font-size: 2.6rem; text-align: center; }
 #rStage .pick { font-size: 1rem; }
+
+/* ---- 🌐 Share with community (Make your own, after Check pack) ---- */
+.share { margin-top: 0.9rem; border-top: 1px solid var(--line, #33285c); padding-top: 0.6rem; }
+.share summary { cursor: pointer; font-weight: 700; color: var(--text, #fff); list-style: none; padding: 0.3rem 0; }
+.share summary::-webkit-details-marker { display: none; }
+.share summary::after { content: ' ▾'; color: var(--muted, #b8aee0); }
+.share[open] summary::after { content: ' ▴'; }
+.share label { display: block; margin: 0.6rem 0 0.2rem; font-weight: 600; }
+.share input:not([type="checkbox"]) { max-width: 22rem; }
+.share .share-hint { font-size: 0.85rem; margin-top: 0.2rem; }
+.share .share-label { margin: 0.8rem 0 0.3rem; font-weight: 600; }
+.share-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.share label.share-tag { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; font-weight: 500; padding: 0.3rem 0.65rem; border: 1px solid var(--line, #33285c); border-radius: 999px; cursor: pointer; }
+.share label.share-tag:has(input:checked) { border-color: var(--accent, #ffcc33); background: rgba(255, 204, 51, 0.12); }
+.share label.share-tag:has(input:disabled) { opacity: 0.45; cursor: default; }
+.share label.share-kid { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; margin-top: 0.9rem; }
+.share input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent, #ffcc33); }
+.share-done { color: #7CFC9A; font-weight: 600; }

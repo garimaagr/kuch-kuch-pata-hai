@@ -223,6 +223,7 @@ let mo = (() => {
   try { return { ...MO_DEFAULTS, ...JSON.parse(load('fbMakeOwn') || '{}') }; } catch { return { ...MO_DEFAULTS }; }
 })();
 const saveMo = () => save('fbMakeOwn', JSON.stringify(mo));
+let share = null; // the "Share with community" form for the checked pack (survives re-renders)
 let communityTags = []; // tag names from the server; empty when there's no database (no tags in the prompt)
 let custom = null; // { pack, preview, csv } after a pack passes the server's check; lives only in this page
 let moErrors = null; // problems from the last check
@@ -353,10 +354,88 @@ function renderMakeOwn() {
             h('div', { class: 'where' }, c.where), c.question, ' → ', h('b', {}, c.answer),
             h('span', {}, '  🔍 verify this fact'))))]
         : h('div', { class: 'muted' }, 'Nothing flagged to check.'),
-      h('div', { class: 'row' }, startBtn, dlCsv, dl)));
+      h('div', { class: 'row' }, startBtn, dlCsv, dl),
+      shareSection()));
   } else {
     fill('moResult');
   }
+}
+
+// ---- 🌐 Share with community (only when the server has a database) ----
+const MAX_SHARE_TAGS = 3;
+function newShare(preview) {
+  return {
+    open: false, code: '', madeBy: load('fbMadeBy') || '',
+    tags: new Set((preview.tags || []).filter((t) => communityTags.includes(t)).slice(0, MAX_SHARE_TAGS)),
+    kid: !!preview.kidFriendly, busy: false, done: false, error: null,
+  };
+}
+
+function shareSection() {
+  if (!communityTags.length || !custom) return null;
+  share ||= newShare(custom.preview);
+  const box = h('details', { class: 'share' }, h('summary', {}, '🌐 Share with community'));
+  box.open = share.open;
+  box.ontoggle = () => (share.open = box.open);
+  if (share.done) {
+    box.append(h('p', { class: 'share-done' }, 'Thanks! It\'ll appear in Community once it\'s approved.'));
+    return box;
+  }
+
+  const codeIn = h('input', { id: 'shareCode', autocomplete: 'off', spellcheck: 'false', maxlength: 20, placeholder: 'e.g. BUZZ-7KQ2-M9XA' });
+  codeIn.value = share.code;
+  codeIn.oninput = () => (share.code = codeIn.value);
+  const madeIn = h('input', { id: 'shareMadeBy', maxlength: 30, placeholder: 'First name or nickname' });
+  madeIn.value = share.madeBy;
+  madeIn.oninput = () => (share.madeBy = madeIn.value);
+
+  const boxes = communityTags.map((t) => {
+    const cb = h('input', { type: 'checkbox', value: t });
+    cb.checked = share.tags.has(t);
+    return [t, cb];
+  });
+  const limitTags = () => boxes.forEach(([t, cb]) => (cb.disabled = !share.tags.has(t) && share.tags.size >= MAX_SHARE_TAGS));
+  boxes.forEach(([t, cb]) => (cb.onchange = () => { cb.checked ? share.tags.add(t) : share.tags.delete(t); limitTags(); }));
+  limitTags();
+
+  const kid = h('input', { type: 'checkbox', id: 'shareKid' });
+  kid.checked = share.kid;
+  kid.onchange = () => (share.kid = kid.checked);
+
+  const submit = h('button', { disabled: share.busy }, share.busy ? 'Sending…' : 'Submit for review');
+  submit.onclick = submitShare;
+  const suggested = custom.preview.suggestedTag;
+  box.append(...[
+    h('p', { class: 'muted' }, 'Send this board to the admin. Once approved, everyone can play it from the Community tab. Playing now isn\'t affected.'),
+    h('label', { for: 'shareCode' }, 'Share code'), codeIn,
+    h('label', { for: 'shareMadeBy' }, 'Made by (optional)'), madeIn,
+    h('div', { class: 'muted share-hint' }, 'Shown on the board. Leave empty to stay anonymous.'),
+    h('div', { class: 'share-label' }, `Tags (1–${MAX_SHARE_TAGS})`),
+    h('div', { class: 'share-tags' }, boxes.map(([t, cb]) => h('label', { class: 'share-tag' }, cb, t))),
+    suggested ? h('div', { class: 'muted' }, `Suggested new tag: ${suggested} (the admin will decide)`) : null,
+    h('label', { class: 'share-kid' }, kid, '👨‍👩‍👧 Kid-friendly (every question, bonus and card suits children)'),
+    share.error ? h('div', { class: 'mo-errors' }, h('b', {}, share.error.title), share.error.list?.length ? h('ul', {}, share.error.list.map((e) => h('li', {}, e))) : null) : null,
+    h('div', { class: 'row' }, submit),
+  ].filter(Boolean));
+  return box;
+}
+
+function submitShare() {
+  if (!custom || !share || share.busy) return;
+  const problem = !share.code.trim() ? 'Enter your share code.' : !share.tags.size ? 'Tick at least 1 tag.' : null;
+  if (problem) { share.error = { title: problem }; return renderMakeOwn(); }
+  share.busy = true;
+  share.error = null;
+  save('fbMadeBy', share.madeBy.trim() || null);
+  renderMakeOwn();
+  socket.emit('community:submit', {
+    pack: custom.pack, shareCode: share.code, madeBy: share.madeBy, tags: [...share.tags], kidFriendly: share.kid,
+  }, (res) => {
+    share.busy = false;
+    if (res?.ok) share.done = true;
+    else share.error = { title: res?.error || 'Something went wrong. Try again.', list: (res?.errors || []).slice(0, 5) };
+    renderMakeOwn();
+  });
 }
 
 function checkPack() {
@@ -365,7 +444,7 @@ function checkPack() {
   $('moCheck').disabled = true;
   socket.emit('host:checkPack', { text, code, secret, name: mo.topic }, (res) => {
     $('moCheck').disabled = false;
-    if (res?.ok) { custom = { pack: res.pack, preview: res.preview, csv: res.csv }; moErrors = null; }
+    if (res?.ok) { custom = { pack: res.pack, preview: res.preview, csv: res.csv }; moErrors = null; share = null; }
     else { custom = null; moErrors = res?.errors?.length ? res.errors : ['Something went wrong. Try again.']; }
     renderSetup();
   });

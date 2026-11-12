@@ -15,6 +15,7 @@ const { makeLimiter, cleanText } = require('./limits');
 const { validatePack, defaultCategories, checkUploadedText } = require('./pack');
 const remotes = require('./remote');
 const db = require('./db');
+const community = require('./community');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -159,6 +160,7 @@ function cleanupRooms(now = Date.now()) {
     if (now - room.lastActive > ROOM_IDLE_MS) closeRoom(code);
   }
   roomCreation.prune(now);
+  community.pruneLimits(now);
   packChecks.prune(now);
 }
 setInterval(cleanupRooms, 10 * 60 * 1000).unref();
@@ -439,6 +441,12 @@ io.on('connection', (socket) => {
   // The community tags for the "Make your own" prompt. Empty when there's no database,
   // and then the prompt doesn't mention tags at all.
   on('host:tags', (cb) => reply(cb, { tags: db.tagNames() }));
+
+  // "Share with community": a checked pack goes to the review queue (needs a share code).
+  on('community:submit', async (data, cb) => {
+    if (typeof cb !== 'function') return;
+    reply(cb, await community.submitPack(data, { ip: clientIp(socket) }));
+  });
 
   // "Make your own": checks a pasted pack and sends back the cleaned pack plus a preview.
   // Changes nothing on the server (the PIN is asked at Start). Counted per game (when the host has one)
