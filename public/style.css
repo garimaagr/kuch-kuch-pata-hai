@@ -340,3 +340,11 @@ body.redflash::after { animation: redflash 0.6s ease-out; }
 .mo-checks { margin: 0.4rem 0; padding-left: 1.2rem; }
 .mo-checks li { margin: 0.35rem 0; }
 .mo-checks .where { color: #b8aee0; font-size: 0.85rem; }
+
+/* How-to-play line for each category */
+.qnote { display: inline-block; margin: 0.4rem 0 0.2rem; padding: 0.35rem 0.8rem; border-radius: 999px; background: #2a1d52; border: 1px solid #4a3a8a; color: #e8e2ff; font-size: 1.05rem; }
+.qnote b { color: #ffcc33; font-weight: 700; }
+.cat-help { flex-basis: 100%; margin: 0.2rem 0 0 12rem; padding-left: 1.1rem; color: #b8aee0; font-size: 0.9rem; }
+.cat-help li { margin: 0.15rem 0; }
+.cat-help b { color: #e8e2ff; }
+@media (max-width: 700px) { .cat-help { margin-left: 0; } }

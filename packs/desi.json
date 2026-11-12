@@ -8,6 +8,7 @@
       "categories": [
         {
           "name": "Ek Tha Plot",
+          "note": "A movie plot in one line. Name the film 🎬",
           "questions": [
             {
               "value": 100,
@@ -49,7 +50,7 @@
         },
         {
           "name": "Professor Pyarelal Explains",
-          "note": "Read it like Professor Pyarelal: very proud, very bad English 🎓",
+          "note": "Read it like Professor Pyarelal (proud, very bad English). Name the film 🎓",
           "questions": [
             {
               "value": 100,
@@ -92,6 +93,7 @@
         },
         {
           "name": "Angrezi Mein Kehte Hain…",
+          "note": "A Hindi film title translated into English. Name the original film 🔤",
           "questions": [
             {
               "value": 100,
@@ -132,6 +134,7 @@
         },
         {
           "name": "Emoji Movies",
+          "note": "Emojis spell out a Bollywood film. Name the film 🎬",
           "questions": [
             {
               "value": 100,
@@ -174,7 +177,7 @@
         },
         {
           "name": "Gaana Pehchano",
-          "note": "Name the song (bonus respect for the film too) 🎶",
+          "note": "A song described badly. Name the song (bonus respect for the film) 🎶",
           "questions": [
             {
               "value": 100,
@@ -221,49 +224,52 @@
       "name": "Desi Life",
       "categories": [
         {
-          "name": "Desi Parents Explained Badly",
+          "name": "Desi Khana, Overly Described",
+          "note": "A desi dish described in far too much detail. Name the dish 🍛",
           "default": true,
           "questions": [
             {
               "value": 200,
-              "question": "Footwear that, in a desi home, doubles as a long-range guided missile.",
-              "answer": "Chappal (the flying chappal)",
-              "bonus": "Throw an imaginary chappal in slow motion, sound effects included",
-              "bonusPoints": 50
+              "question": "Hollow, crispy little ball, punched open with a thumb, filled with spicy tangy water and swallowed in one go before it bursts all over your shirt.",
+              "answer": "Pani puri (golgappa / puchka)",
+              "bonus": "Eat an imaginary pani puri in one bite, then react to the spice",
+              "bonusPoints": 50,
+              "funFact": "It's golgappa in Delhi, puchka in Kolkata and pani puri in Mumbai."
             },
             {
               "value": 400,
-              "question": "A boy you have never met, who topped every exam, became an engineer AND a doctor, and still calls his mother every day. Used against you since birth.",
-              "answer": "Sharma ji ka beta",
-              "bonus": "Say \"Sharma ji ka beta toh…\" like a deeply disappointed parent",
+              "question": "Rice and meat layered in a giant pot, sealed with dough and slow-cooked. Hyderabad and Lucknow have been arguing about whose is better for about 200 years.",
+              "answer": "Biryani",
+              "bonus": "Defend your favourite city's biryani in 10 seconds, with passion",
               "bonusPoints": 50
             },
             {
               "value": 600,
-              "question": "Big plastic tub in the freezer that promises happiness but always contains last Tuesday's dal.",
-              "answer": "The ice-cream tub full of leftovers",
-              "bonus": "Open an imaginary ice-cream tub, find dal inside, and react like a filmy heroine",
+              "question": "Bright orange spirals of fried batter, soaked in sugar syrup, eaten hot on a winter morning (sometimes with rabri).",
+              "answer": "Jalebi",
+              "bonus": "Draw a jalebi in the air with one finger, without lifting it",
               "bonusPoints": 50
             },
             {
               "value": 800,
-              "question": "A plastic bag, stuffed with more plastic bags, kept in a kitchen drawer in case the family ever needs 300 plastic bags at once.",
-              "answer": "The bag of bags",
-              "bonus": "Fold an imaginary plastic bag into a tiny triangle, aunty-style",
+              "question": "A huge, paper-thin, crispy South Indian crepe made from fermented rice and lentil batter, usually longer than the plate it's served on.",
+              "answer": "Dosa (masala dosa)",
+              "bonus": "Shout \"One masala dosa, extra chutney!\" like a busy restaurant waiter",
               "bonusPoints": 50
             },
             {
               "value": 1000,
-              "question": "Ancient household cure-all: stirred into warm milk for colds, put on cuts, and prescribed for everything from pimples to heartbreak.",
-              "answer": "Haldi (turmeric)",
-              "bonus": "Say \"Haldi wala doodh pi lo!\" like a 90s filmy mother",
+              "question": "Mumbai's carb-on-carb street classic: a spiced potato fritter dipped in gram-flour batter, fried, and stuffed into a soft bread roll with dry garlic chutney.",
+              "answer": "Vada pav",
+              "bonus": "Sell a vada pav like a Mumbai street vendor in 5 seconds",
               "bonusPoints": 50,
-              "funFact": "Haldi doodh is now sold in cafés around the world as \"golden milk\" or a \"turmeric latte\"."
+              "funFact": "It's often called the \"Bombay burger\"."
             }
           ]
         },
         {
           "name": "Wedding Season",
+          "note": "A desi wedding moment or ritual described. Name it 💍",
           "default": true,
           "questions": [
             {
@@ -307,6 +313,7 @@
         },
         {
           "name": "Festivals in Emoji",
+          "note": "Emojis for an Indian festival. Name the festival 🪔",
           "default": true,
           "questions": [
             {
@@ -350,6 +357,7 @@
         },
         {
           "name": "Ad Break Mein Yaad Hai?",
+          "note": "Old Indian TV ads. Name the brand, slogan or mascot 📺",
           "questions": [
             {
               "value": 200,
@@ -394,6 +402,7 @@
         },
         {
           "name": "Aila!",
+          "note": "Cricket questions, from beginner to expert. Answer the question 🏏",
           "questions": [
             {
               "value": 200,
@@ -430,11 +439,11 @@
               "verify": true
             }
           ],
-          "default": true,
-          "note": "Cricket for beginners (and experts) 🏏"
+          "default": true
         },
         {
           "name": "Pyaar Dosti Hai",
+          "note": "Bollywood friendship and romance trivia. Answer the question 💞",
           "questions": [
             {
               "value": 200,
@@ -516,6 +525,7 @@
         },
         {
           "name": "Dhan Dhana Dhan Goal",
+          "note": "Football (soccer) trivia. Answer the question ⚽",
           "questions": [
             {
               "value": 200,

@@ -8,6 +8,7 @@
       "categories": [
         {
           "name": "Countries Explained Badly",
+          "note": "A country described badly. Name the country 🌍",
           "questions": [
             {
               "value": 100,
@@ -49,7 +50,7 @@
         },
         {
           "name": "Flags in Emoji",
-          "note": "Guess the country from its flag 🏳️",
+          "note": "A flag drawn in emoji. Name the country 🏳️",
           "questions": [
             {
               "value": 100,
@@ -93,6 +94,7 @@
         },
         {
           "name": "Landmarks by a Tired Tourist",
+          "note": "A worn-out tourist describes a landmark. Name the landmark 🗺️",
           "questions": [
             {
               "value": 100,
@@ -136,6 +138,7 @@
         },
         {
           "name": "Food Overly Described",
+          "note": "A dish from around the world, described in far too much detail. Name it 🍽️",
           "questions": [
             {
               "value": 100,
@@ -177,7 +180,7 @@
         },
         {
           "name": "Real or Made Up? (Countries)",
-          "note": "Answer \"real\" or \"made up\" 🤔",
+          "note": "A strange fact about a country. Answer \"real\" or \"made up\" 🤔",
           "questions": [
             {
               "value": 100,
@@ -224,7 +227,7 @@
       "categories": [
         {
           "name": "Overly Wordy History",
-          "note": "Read it like a very serious documentary 🎙️",
+          "note": "A famous event, told far too formally (read it like a documentary). Name it 🎙️",
           "questions": [
             {
               "value": 200,
@@ -266,6 +269,7 @@
         },
         {
           "name": "Inventions Explained Badly",
+          "note": "An everyday invention explained badly. Name the invention 💡",
           "questions": [
             {
               "value": 200,
@@ -308,7 +312,7 @@
         },
         {
           "name": "Real or Made Up? (History)",
-          "note": "Answer \"real\" or \"made up\" 🤔",
+          "note": "A history \"fact\". Answer \"real\" or \"made up\" 🤔",
           "questions": [
             {
               "value": 200,
@@ -355,6 +359,7 @@
         },
         {
           "name": "Who Said It?",
+          "note": "A famous quote. Name who said it 🗣️",
           "questions": [
             {
               "value": 200,
@@ -398,6 +403,7 @@
         },
         {
           "name": "Ancient Wonders Explained Badly",
+          "note": "An ancient monument described badly. Name the monument 🏛️",
           "questions": [
             {
               "value": 200,

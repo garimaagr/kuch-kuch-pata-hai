@@ -8,6 +8,7 @@
       "categories": [
         {
           "name": "Sports Explained Badly",
+          "note": "A sport described badly. Name the sport 🏅",
           "default": true,
           "questions": [
             {
@@ -45,6 +46,7 @@
         },
         {
           "name": "Rules for Beginners",
+          "note": "Basic rules of popular sports. Answer the question 📏",
           "default": true,
           "questions": [
             {
@@ -82,6 +84,7 @@
         },
         {
           "name": "Sports in Emoji",
+          "note": "Emojis for a sport. Name the sport 🏅",
           "default": true,
           "questions": [
             {
@@ -120,6 +123,7 @@
         },
         {
           "name": "Olympics Basics",
+          "note": "Olympics questions, easy to hard. Answer the question 🥇",
           "default": true,
           "questions": [
             {
@@ -159,6 +163,7 @@
         },
         {
           "name": "Real or Made Up? (Rules)",
+          "note": "A sports rule. Answer \"real\" or \"made up\" 🤔",
           "default": true,
           "questions": [
             {
@@ -202,6 +207,7 @@
       "categories": [
         {
           "name": "Legends Explained Badly",
+          "note": "A sports legend described badly. Name the player 🐐",
           "default": true,
           "questions": [
             {
@@ -239,6 +245,7 @@
         },
         {
           "name": "Famous Moments",
+          "note": "Famous sports moments. Answer the question 📸",
           "default": true,
           "questions": [
             {
@@ -277,6 +284,7 @@
         },
         {
           "name": "Who Said It? (Sports)",
+          "note": "A famous sports quote. Name who said it 🗣️",
           "default": true,
           "questions": [
             {
@@ -314,6 +322,7 @@
         },
         {
           "name": "Real or Made Up? (Legends)",
+          "note": "A fact about a sports legend. Answer \"real\" or \"made up\" 🤔",
           "default": true,
           "questions": [
             {
@@ -352,6 +361,7 @@
         },
         {
           "name": "Overly Wordy Sports Events",
+          "note": "A big sports event described far too formally. Name the event 🏟️",
           "default": true,
           "questions": [
             {
@@ -389,6 +399,7 @@
         },
         {
           "name": "Dhan Dhana Dhan Goal",
+          "note": "Football (soccer) trivia, from Desi Night. Answer the question ⚽",
           "questions": [
             {
               "value": 200,
@@ -423,8 +434,7 @@
               "question": "What is common to these footballers: Alfredo Di Stéfano, Ferenc Puskás, Diego Costa, Thiago Motta, José Altafini, Declan Rice, Wilfried Zaha, Jermaine Jones and Munir El Haddadi?",
               "answer": "They all played international football for more than one country"
             }
-          ],
-          "note": "Optional: the football round from Desi Night ⚽"
+          ]
         }
       ]
     }

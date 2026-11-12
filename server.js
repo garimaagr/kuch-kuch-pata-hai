@@ -257,7 +257,7 @@ function packSummaries() {
         id: t.id, name: pack.name, emoji: pack.emoji || t.emoji, hasSparkle: !!pack.sparkle,
         boards: pack.boards.map((b) => {
           const defaults = defaultCategories(b);
-          return { name: b.name, categories: b.categories.map((c) => ({ name: c.name, default: defaults.includes(c) })) };
+          return { name: b.name, categories: b.categories.map((c) => ({ name: c.name, note: c.note, default: defaults.includes(c) })) };
         }),
       };
     } catch {

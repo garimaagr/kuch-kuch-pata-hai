@@ -159,7 +159,7 @@ function renderSetup() {
     const picks = catPicks(pack, bi);
     if (picks.length !== 5) allFive = false;
     const chips = board.categories.map((c, ci) => {
-      const b = h('button', { class: `segbtn ${picks.includes(ci) ? 'on' : ''}`, type: 'button' }, c.name);
+      const b = h('button', { class: `segbtn ${picks.includes(ci) ? 'on' : ''}`, type: 'button', title: c.note || null }, c.name);
       b.onclick = () => {
         const next = picks.includes(ci) ? picks.filter((x) => x !== ci) : [...picks, ci];
         setup.cats = { ...setup.cats, [pack.id]: { ...(setup.cats[pack.id] || {}), [bi]: next.map((i) => board.categories[i].name) } };
@@ -169,7 +169,10 @@ function renderSetup() {
     });
     return h('div', { class: 'opt' },
       h('span', { class: 'opt-label' }, `Board ${bi + 1} categories `, h('small', { class: picks.length === 5 ? 'ok' : 'bad' }, `${picks.length} of 5 picked`)),
-      h('div', { class: 'seg' }, chips));
+      h('div', { class: 'seg' }, chips),
+      // What each picked category is, so the host knows what they're choosing.
+      h('ul', { class: 'cat-help' }, picks.map((ci) => board.categories[ci]).map((c) =>
+        h('li', {}, h('b', {}, c.name), c.note ? ` — ${c.note}` : ''))));
   }));
   $('startGame').disabled = !allFive;
   const modesOn = Object.values(setup.modes).some((v) => v !== false);
@@ -208,16 +211,16 @@ function makePrompt() {
   const sparkleShape = mo.sparkle ? ',"sparkle":{"draw":{"easy":[],"medium":[],"tricky":[]},"charades":[],"mimic":[]}' : '';
   const reply = mo.format === 'table' ? [
     'Reply with ONLY a CSV table in one code block, with exactly this header row:',
-    'Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify',
+    'Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify,How to play',
     '- First row after the header: Pack,<short pack name>,<one emoji>',
     '- Then one row per question. Board is the board\'s name (the same on every row of that board). Points are that board\'s values.',
-    '- Leave Fun fact empty when there isn\'t one. Verify is "yes" or empty.',
+    '- Leave Fun fact empty when there isn\'t one. Verify is "yes" or empty. Fill How to play on the first row of each category only.',
     '- Put a cell in double quotes if it contains a comma or a quote, and write any quote inside it as "".',
     mo.sparkle ? '- Sparkle cards go at the end, one per row, with the card in the Question column: Sparkle,Draw easy,,<thing> (also Draw medium, Draw tricky, Charades, Mimic).' : null,
     '- If you run out of space, stop at the end of a row. When I say "continue", carry on from the next row.',
   ] : [
     'Reply with ONLY one JSON object in one code block, in exactly this format:',
-    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
+    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
   ];
   return [
     'Make a trivia pack for a party buzzer game played by friends in the US and India.',
@@ -229,6 +232,7 @@ function makePrompt() {
     'Rules:',
     '- Each board has 5 categories × 5 questions. Board 1 values: 100,200,300,400,500. Board 2 (if any) values: 200,400,600,800,1000. Lowest = almost everyone gets it; highest = a real stretch.',
     '- Use fun category formats: "___ Explained Badly", "Overly Wordy ___", "___ in Emoji", "Who Said It?", "Real or Made Up?".',
+    '- Every category gets a short "how to play" line for the host (max 100 characters) saying what players should answer, e.g. "A movie plot described badly. Name the film".',
     '- Should make sense to people in both the US and India. Avoid very local references.',
     '- Answers short (a name, title or a few words).',
     '- Every question has "bonus": a quick, silly, safe thing to do in under 15 seconds that fits the answer. bonusPoints is 50.',
@@ -522,7 +526,7 @@ function render() {
   $('boardDoneText').textContent = state.allDone ? '🎉 All done!' : `🎉 ${boardName || 'This board'} is finished!`;
   $('grid').style.gridTemplateColumns = `repeat(${state.board.length}, 1fr)`;
   const rows = Math.max(...state.board.map((c) => c.values.length));
-  const cells = state.board.map((c) => h('div', { class: 'cat' }, c.category));
+  const cells = state.board.map((c) => h('div', { class: 'cat', title: c.note || null }, c.category));
   for (let i = 0; i < rows; i++) {
     state.board.forEach((c, ci) => {
       if (c.values[i] == null) return cells.push(h('div'));
@@ -536,7 +540,8 @@ function render() {
   const q = state.current;
   if (q) {
     $('qCategory').textContent = `${q.category} — ${q.value}`;
-    $('qNote').textContent = q.note || '';
+    fill('qNote', q.note ? [h('b', {}, '💬 How to play: '), q.note] : []);
+    show('qNote', !!q.note);
     $('qText').textContent = q.question;
     $('qText').classList.toggle('long', q.question.length > 160); // wordy questions get smaller text
     $('qText').classList.toggle('xlong', q.question.length > 380); // really wordy ones get smaller still

@@ -148,6 +148,7 @@ test('table format: CSV round trip, Excel copy-paste (tabs), and "continue" repl
   const { packToTable } = require('../table');
   const p = goodPack();
   p.boards[0].categories[0].questions[0].question = '=SUM(A1) "quoted", with a comma';
+  p.boards[1].categories[3].note = 'A film described badly. Name the film';
   p.boards[1].categories[2].questions[1].verify = true;
   const pack = validatePack(p).pack;
   const csv = packToTable(pack);

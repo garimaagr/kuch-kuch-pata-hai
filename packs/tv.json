@@ -8,6 +8,7 @@
       "categories": [
         {
           "name": "Shows Explained Badly",
+          "note": "A TV show described badly. Name the show 📺",
           "questions": [
             {
               "value": 100,
@@ -52,6 +53,7 @@
         },
         {
           "name": "Shows in Emoji",
+          "note": "Emojis spell out a TV show. Name the show 📺",
           "questions": [
             {
               "value": 100,
@@ -94,6 +96,7 @@
         },
         {
           "name": "Catchphrase: Who Said It?",
+          "note": "A TV catchphrase. Name the character (and the show) 🗣️",
           "questions": [
             {
               "value": 100,
@@ -134,6 +137,7 @@
         },
         {
           "name": "Cartoons Explained Badly",
+          "note": "A cartoon described badly. Name the cartoon 🐭",
           "questions": [
             {
               "value": 100,
@@ -176,6 +180,7 @@
         },
         {
           "name": "Real or Made Up? (TV)",
+          "note": "A TV \"fact\". Answer \"real\" or \"made up\" 🤔",
           "questions": [
             {
               "value": 100,
@@ -221,6 +226,7 @@
       "categories": [
         {
           "name": "Movies Explained Badly",
+          "note": "A movie plot described badly. Name the film 🎬",
           "questions": [
             {
               "value": 200,
@@ -261,6 +267,7 @@
         },
         {
           "name": "Movies in Emoji",
+          "note": "Emojis spell out a movie. Name the film 🍿",
           "questions": [
             {
               "value": 200,
@@ -302,6 +309,7 @@
         },
         {
           "name": "Famous Lines: Who Said It?",
+          "note": "A famous movie line. Name the character (and the film) 🗣️",
           "questions": [
             {
               "value": 200,
@@ -344,7 +352,7 @@
         },
         {
           "name": "Desi Goes Global",
-          "note": "Indian stories the whole world watched 🌏",
+          "note": "Indian stories the whole world watched. Name the film 🌏",
           "questions": [
             {
               "value": 200,
@@ -388,6 +396,7 @@
         },
         {
           "name": "Real or Made Up? (Movies)",
+          "note": "A movie \"fact\". Answer \"real\" or \"made up\" 🤔",
           "questions": [
             {
               "value": 200,
