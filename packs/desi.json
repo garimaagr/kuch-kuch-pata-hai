@@ -29,8 +29,7 @@
               "question": "Three men invest their money in a scheme that promises to double it in 21 days. Their greed turns their lives upside down.",
               "answer": "Phir Hera Pheri",
               "bonus": "Say \"Ye Baburao ka style hai!\" in Baburao's voice",
-              "bonusPoints": 50,
-              "trapAnswer": "Hera Pheri"
+              "bonusPoints": 50
             },
             {
               "value": 400,
@@ -57,8 +56,7 @@
               "question": "Big family, two brothers. Elder brother marries, very big wedding, very many songs. Younger brother and bhabhi's sister are doing teasing, stealing shoes, taking money, more songs. Then bhabhi falls from stairs and goes to God. Now whole family wants sister marries elder brother, and sister says okay because family, but she loves the younger one. Nobody is asking her. Only the dog is understanding. Dog carries the letter and solves full film. Dog is real hero.",
               "answer": "Hum Aapke Hain Koun..!",
               "bonus": "Sing a line of \"Didi Tera Devar Deewana\"",
-              "bonusPoints": 50,
-              "trapAnswer": "Hum Saath-Saath Hain"
+              "bonusPoints": 50
             },
             {
               "value": 200,
@@ -156,8 +154,7 @@
               "question": "🚽💍❤️",
               "answer": "Toilet: Ek Prem Katha",
               "bonus": "Give a 10-second dramatic speech on why every home needs a toilet",
-              "bonusPoints": 50,
-              "trapAnswer": "Pad Man"
+              "bonusPoints": 50
             },
             {
               "value": 400,
@@ -246,8 +243,7 @@
               "question": "Big plastic tub in the freezer that promises happiness but always contains last Tuesday's dal.",
               "answer": "The ice-cream tub full of leftovers",
               "bonus": "Open an imaginary ice-cream tub, find dal inside, and react like a filmy heroine",
-              "bonusPoints": 50,
-              "trapAnswer": "Ice cream"
+              "bonusPoints": 50
             },
             {
               "value": 800,
@@ -262,7 +258,6 @@
               "answer": "Haldi (turmeric)",
               "bonus": "Say \"Haldi wala doodh pi lo!\" like a 90s filmy mother",
               "bonusPoints": 50,
-              "trapAnswer": "Vicks VapoRub",
               "funFact": "Haldi doodh is now sold in cafés around the world as \"golden milk\" or a \"turmeric latte\"."
             }
           ]
@@ -349,7 +344,6 @@
               "answer": "Onam",
               "bonus": "Row your team's snake boat for 5 seconds, all together",
               "bonusPoints": 50,
-              "trapAnswer": "Pongal",
               "funFact": "The Onam feast, the sadya, has 20+ dishes served on a banana leaf."
             }
           ]
@@ -406,8 +400,7 @@
               "question": "Who captained India to its 2011 Cricket World Cup victory?",
               "answer": "MS Dhoni",
               "bonus": "Play a helicopter shot and hold the finish",
-              "bonusPoints": 50,
-              "trapAnswer": "Sachin Tendulkar"
+              "bonusPoints": 50
             },
             {
               "value": 400,

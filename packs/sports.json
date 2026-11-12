@@ -39,8 +39,7 @@
             {
               "value": 500,
               "question": "Called \"football\" even though feet barely touch the ball. The clock says 60 minutes; it takes over three hours.",
-              "answer": "American football",
-              "trapAnswer": "Rugby"
+              "answer": "American football"
             }
           ]
         },
@@ -77,8 +76,7 @@
               "question": "In American football, how many points is a touchdown worth, before the extra kick?",
               "answer": "6",
               "bonus": "Do a touchdown end-zone dance",
-              "bonusPoints": 50,
-              "trapAnswer": "7"
+              "bonusPoints": 50
             }
           ]
         },
@@ -155,7 +153,6 @@
               "value": 500,
               "question": "Which city will host the 2028 Summer Olympics?",
               "answer": "Los Angeles",
-              "trapAnswer": "Brisbane",
               "funFact": "Cricket is back at the 2028 Games, for the first time since 1900."
             }
           ]
@@ -187,7 +184,6 @@
               "value": 400,
               "question": "Real or made up: A football (soccer) goalkeeper can score straight from their own goal kick.",
               "answer": "Real",
-              "trapAnswer": "Made up",
               "verify": true
             },
             {
@@ -232,8 +228,7 @@
             {
               "value": 800,
               "question": "23 Grand Slam singles titles, one of them won while she was pregnant.",
-              "answer": "Serena Williams",
-              "trapAnswer": "Venus Williams"
+              "answer": "Serena Williams"
             },
             {
               "value": 1000,
@@ -332,8 +327,7 @@
             {
               "value": 400,
               "question": "Real or made up: Sachin Tendulkar never scored a Test double century.",
-              "answer": "Made up (he scored six)",
-              "trapAnswer": "Real"
+              "answer": "Made up (he scored six)"
             },
             {
               "value": 600,
@@ -389,8 +383,7 @@
             {
               "value": 1000,
               "question": "A cricket league launched in 2008: three hours of sixes, cheerleaders, strategic timeouts and billion-dollar auctions.",
-              "answer": "The IPL (Indian Premier League)",
-              "trapAnswer": "The Big Bash League"
+              "answer": "The IPL (Indian Premier League)"
             }
           ]
         },

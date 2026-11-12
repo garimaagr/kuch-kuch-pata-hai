@@ -33,10 +33,10 @@ It prints something like:
    - **😂 +5** buttons (one per team) reward funny wrong answers. Tap as often as you like.
    - **Show answer** and **Back to board** when you're done. Used tiles go grey.
    - Fix any mistakes with the **− / +** buttons under each team's score.
-   - **👁 Hold to peek** shows the answer (and any trap answer) while you hold it. If the TV mirrors your screen, it shows there too.
+   - **👁 Hold to peek** shows the answer while you hold it. If the TV mirrors your screen, it shows there too.
    - **Board 2 is worth double** (200–1000). When Board 1 is finished, tap **Play Board 2 (Double!)**. Scores carry over. **Board 2 →** at the top jumps early if you're short on time.
    - **Hidden Double:** one tile per board (never a 100/200) is secretly a Double. It flashes "DOUBLE!" and is worth 2× if right, −2× if wrong.
-   - **🚨 Trap!** appears when a question has a trap answer (the obvious-but-wrong one). If a team says it, tap Trap: it counts as wrong, with a horn. The reveal shows the trap answer with a ❌ and any "💡 Did you know?" fun fact.
+   - **Show answer** also shows any "💡 Did you know?" fun fact.
    - **🏁 Finish game** (or **See the winner** when every board is done) shows the winner screen.
 5. **✨ Sparkle Round** starts by itself after every 6 finished questions (answered correctly, or answer shown). You can also open it with the **✨ Sparkle Round** button on the board, or leave it with **Skip Sparkle**.
    - Pick the team, then the mode: 🎨 **Draw**, 🤐 **Dumb Charades** or 🎭 **Mimic**. For Draw, the team also picks a difficulty: 🌶️ Easy (50), 🌶️🌶️ Medium (100) or 🌶️🌶️🌶️ Tricky (200). The team chooses its performer, and you tap their name to draw a card. **Skip card** draws another.
@@ -56,10 +56,10 @@ It prints something like:
    - **Claude stopped halfway (Table)?** Type "continue" in Claude and paste that reply underneath the first one. Repeated header rows are fine.
    - **Want to review it first (Table)?** Paste the table into Excel or Google Sheets, fix anything, then select all the cells, copy, and paste them into the box. Or save as **CSV** and use **📂 Upload .csv / .json**. (.xlsx files aren't read directly: save as CSV first.)
 5. Click **✔ Check pack**. If something's wrong, you'll see a list like `"Saturday Morning" → "Theme Tunes" has 4 questions, needs 5`. Fix it, or copy those lines back to Claude.
-6. Read the **⚠️ Check these** list: facts Claude wasn't sure of (🔍 verify) and every trap answer.
+6. Read the **⚠️ Check these** list: facts Claude wasn't sure of (🔍 verify).
 7. Keep a copy with **⬇ Download for Excel (.csv)** or **⬇ Download pack (.json)**. Either file can be uploaded next time. Then **▶ Start game with this pack**.
 
-**Table columns:** `Board, Category, Points, Question, Answer, Bonus, Fun fact, Trap answer, Verify`. An optional first row `Pack, <name>, <emoji>` sets the pack's name; otherwise the topic is used. Sparkle cards are rows like `Sparkle, Draw easy, , <thing>` (also `Draw medium`, `Draw tricky`, `Charades`, `Mimic`). Board 1 uses 100–500 points and Board 2 uses 200–1000.
+**Table columns:** `Board, Category, Points, Question, Answer, Bonus, Fun fact, Verify`. An optional first row `Pack, <name>, <emoji>` sets the pack's name; otherwise the topic is used. Sparkle cards are rows like `Sparkle, Draw easy, , <thing>` (also `Draw medium`, `Draw tricky`, `Charades`, `Mimic`). Board 1 uses 100–500 points and Board 2 uses 200–1000.
 
 An uploaded pack lives only in that game's memory and is gone when the server restarts, so keep the downloaded file. It must follow the strict rules: exactly 5 categories per board, and questions up to 300 characters.
 
@@ -110,14 +110,14 @@ A pack looks like this:
   "boards": [ { "name": "Bollywood", "categories": [
     { "name": "Ek Tha Plot", "note": "optional hint for the host", "default": true, "questions": [
       { "value": 100, "question": "…", "answer": "…", "bonus": "…", "bonusPoints": 50,
-        "funFact": "…", "trapAnswer": "…", "verify": false } ] } ] } ],
+        "funFact": "…", "verify": false } ] } ] } ],
   "sparkle": { "draw": { "easy": [], "medium": [], "tricky": [] }, "charades": [], "mimic": [] } }
 ```
 
 - A pack has 1 or 2 boards. Each category has exactly 5 questions.
 - **Board 1** values are 100, 200, 300, 400, 500. **Board 2** values are 200, 400, 600, 800, 1000.
 - A built-in board can have 5–8 categories. Mark 5 with `"default": true` (or the first 5 are used).
-- `note`, `bonus`, `bonusPoints`, `funFact`, `trapAnswer`, `verify` and `sparkle` are optional. Leave out `bonus` to skip the bonus screen.
+- `note`, `bonus`, `bonusPoints`, `funFact`, `verify` and `sparkle` are optional. (An old `trapAnswer` field is ignored.) Leave out `bonus` to skip the bonus screen.
 - Every pack is checked when a game starts. If something is wrong, **New game** shows exactly what, like "Board 2, category 3 has 4 questions, needs 5".
 
 Draw points are `DRAW_LEVELS` in `server.js`, and how often the Sparkle Round starts is `SPARKLE_EVERY` at the top of `server.js` (6 by default). Changes show up the next time you click **New game**.

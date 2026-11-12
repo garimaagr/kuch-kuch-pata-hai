@@ -14,8 +14,8 @@ const DRAW_LEVELS = ['easy', 'medium', 'tricky'];
 // Uploaded packs get the strict limits. Built-in packs (written by us) may be a little longer,
 // e.g. the wordy Professor Pyarelal questions, and may have up to 8 categories per board.
 const LIMITS = {
-  upload: { name: 40, note: 100, question: 300, answer: 100, bonus: 150, funFact: 200, trapAnswer: 100, sparkleItem: 80, sparkleList: 30, emoji: 8, minCategories: 5, maxCategories: 5 },
-  builtin: { name: 40, note: 100, question: 600, answer: 100, bonus: 150, funFact: 200, trapAnswer: 100, sparkleItem: 150, sparkleList: 30, emoji: 8, minCategories: 5, maxCategories: 8 },
+  upload: { name: 40, note: 100, question: 300, answer: 100, bonus: 150, funFact: 200, sparkleItem: 80, sparkleList: 30, emoji: 8, minCategories: 5, maxCategories: 5 },
+  builtin: { name: 40, note: 100, question: 600, answer: 100, bonus: 150, funFact: 200, sparkleItem: 150, sparkleList: 30, emoji: 8, minCategories: 5, maxCategories: 8 },
 };
 
 const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -120,6 +120,7 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false } = {}) {
       qs.forEach((q, qi) => {
         const qw = `${cw}, question ${ordinal(qi)}`;
         if (!isObj(q)) return err(`${qw} must be an object.`);
+        // "trapAnswer" is from an older version of the game: still allowed (so old packs load) but ignored.
         onlyKeys(q, ['value', 'question', 'answer', 'bonus', 'bonusPoints', 'funFact', 'trapAnswer', 'verify'], qw);
         const want = BOARD_VALUES[bi][qi];
         if (q.value !== want) err(`${qw} should be worth ${want} (Board ${ordinal(bi)} goes ${BOARD_VALUES[bi].join(', ')}).`);
@@ -136,7 +137,6 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false } = {}) {
           bonus,
           bonusPoints: bonus ? bonusPoints ?? 50 : undefined,
           funFact: str(q.funFact, L.funFact, `${qw} fun fact`, false),
-          trapAnswer: str(q.trapAnswer, L.trapAnswer, `${qw} trap answer`, false),
           verify: bool(q.verify, `${qw} "verify"`),
         }));
       });
@@ -188,13 +188,12 @@ function defaultCategories(board) {
 }
 
 // What the "Make your own" screen shows after a check: names, counts, and a "check these" list
-// (questions marked verify, and every trap answer). Takes a pack that already passed validatePack.
+// (questions marked verify). Takes a pack that already passed validatePack.
 function packPreview(pack) {
   const checks = [];
   pack.boards.forEach((b, bi) => b.categories.forEach((c) => c.questions.forEach((q) => {
     const where = `Board ${bi + 1} · ${c.name} · ${q.value}`;
     if (q.verify) checks.push({ where, kind: 'verify', question: q.question, answer: q.answer });
-    if (q.trapAnswer) checks.push({ where, kind: 'trap', question: q.question, answer: q.answer, trapAnswer: q.trapAnswer });
   })));
   return {
     name: pack.name, emoji: pack.emoji || '',

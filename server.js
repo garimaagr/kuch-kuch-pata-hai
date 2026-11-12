@@ -539,19 +539,6 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  // Trap: the team said the obvious-but-wrong answer. Same as Wrong, plus a horn on the TV.
-  on('host:trap', () => {
-    const room = hostRoom();
-    const turn = room && buzz.currentTurn(room.buzz);
-    const team = turn && room.teams.find((t) => t.id === turn.teamId);
-    const q = room && currentQuestion(room);
-    if (!team || !q?.trapAnswer) return;
-    team.score -= q.value * (room.current.double ? 2 : 1);
-    buzz.lockTeam(room.buzz, team.id);
-    room.current.traps = (room.current.traps || 0) + 1;
-    send(room);
-  });
-
   on('host:showAnswer', () => {
     const room = hostRoom();
     if (!room?.current) return;

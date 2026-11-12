@@ -126,15 +126,17 @@ test('every built-in pack passes the validator', () => {
 test('"Make your own": a pasted Claude reply is checked with the strict rules and previewed', () => {
   const p = goodPack();
   p.boards[0].categories[1].questions[2].verify = true;
-  p.boards[1].categories[0].questions[4].trapAnswer = 'The obvious one';
+  p.boards[1].categories[0].questions[4].verify = true;
+  p.boards[1].categories[0].questions[3].trapAnswer = 'Old field'; // from older packs: accepted, then dropped
   const res = checkUploadedText('Here is your pack!\n```json\n' + JSON.stringify(p) + '\n```');
   assert.ok(res.ok, res.errors?.join('\n'));
   assert.strictEqual(res.preview.questions, 50);
   assert.deepStrictEqual(res.preview.boards.map((b) => b.name), ['Board 1', 'Board 2']);
   assert.deepStrictEqual(res.preview.checks.map((c) => [c.kind, c.where]), [
     ['verify', 'Board 1 · Category 2 · 300'],
-    ['trap', 'Board 2 · Category 1 · 1000'],
+    ['verify', 'Board 2 · Category 1 · 1000'],
   ]);
+  assert.ok(!('trapAnswer' in res.pack.boards[1].categories[0].questions[3]));
   // Uploads never get the built-in allowances (longer questions, extra categories).
   const long = goodPack();
   long.boards[0].categories[0].questions[0].question = 'x'.repeat(400);
@@ -146,7 +148,6 @@ test('table format: CSV round trip, Excel copy-paste (tabs), and "continue" repl
   const { packToTable } = require('../table');
   const p = goodPack();
   p.boards[0].categories[0].questions[0].question = '=SUM(A1) "quoted", with a comma';
-  p.boards[1].categories[2].questions[1].trapAnswer = 'Trap';
   p.boards[1].categories[2].questions[1].verify = true;
   const pack = validatePack(p).pack;
   const csv = packToTable(pack);

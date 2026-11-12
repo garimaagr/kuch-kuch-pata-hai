@@ -81,16 +81,14 @@
               "question": "👑🇬🇧☕🏰",
               "answer": "The Crown",
               "bonus": "Do the slowest, most royal wave you can",
-              "bonusPoints": 50,
-              "trapAnswer": "Downton Abbey"
+              "bonusPoints": 50
             },
             {
               "value": 500,
               "question": "✈️💥🏝️🔢",
               "answer": "Lost",
               "bonus": "Say \"We have to go back!\" with full drama",
-              "bonusPoints": 50,
-              "trapAnswer": "Cast Away"
+              "bonusPoints": 50
             }
           ]
         },
@@ -130,8 +128,7 @@
               "question": "\"Legen… wait for it… dary!\"",
               "answer": "Barney Stinson (How I Met Your Mother)",
               "bonus": "Say it in character and adjust an imaginary tie",
-              "bonusPoints": 50,
-              "trapAnswer": "Joey Tribbiani"
+              "bonusPoints": 50
             }
           ]
         },
@@ -213,8 +210,7 @@
               "question": "Real or made up: Stranger Things was the first show Netflix ever made itself.",
               "answer": "Made up (House of Cards and Lilyhammer came first)",
               "bonus": "Say \"Are you still watching?\" like the Netflix screen",
-              "bonusPoints": 50,
-              "trapAnswer": "Real"
+              "bonusPoints": 50
             }
           ]
         }
@@ -259,8 +255,7 @@
               "question": "Thieves break into a man's dream inside a dream inside a dream, and everyone keeps checking a spinning top.",
               "answer": "Inception",
               "bonus": "Spin an imaginary top and stare at it nervously",
-              "bonusPoints": 50,
-              "trapAnswer": "Interstellar"
+              "bonusPoints": 50
             }
           ]
         },
@@ -293,8 +288,7 @@
               "question": "🧙‍♂️💍🌋👣",
               "answer": "The Lord of the Rings",
               "bonus": "Say \"You shall not pass!\" like Gandalf",
-              "bonusPoints": 50,
-              "trapAnswer": "The Hobbit"
+              "bonusPoints": 50
             },
             {
               "value": 1000,
@@ -365,7 +359,6 @@
               "answer": "RRR",
               "bonus": "Do the Naatu Naatu shuffle for 5 seconds",
               "bonusPoints": 50,
-              "trapAnswer": "Baahubali",
               "funFact": "\"Naatu Naatu\" won Best Original Song in 2023."
             },
             {
@@ -409,8 +402,7 @@
               "question": "Real or made up: Darth Vader never actually says \"Luke, I am your father.\"",
               "answer": "Real (he says \"No, I am your father.\")",
               "bonus": "Do Darth Vader breathing for 5 seconds",
-              "bonusPoints": 50,
-              "trapAnswer": "Made up"
+              "bonusPoints": 50
             },
             {
               "value": 600,

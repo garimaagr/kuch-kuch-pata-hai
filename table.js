@@ -2,14 +2,14 @@
 // Google Sheets, reviewed, and pasted back (as CSV, or as tab-separated cells copied from a sheet).
 // It only turns text into a plain pack object; validatePack still checks everything afterwards.
 //
-//   Board,Category,Points,Question,Answer,Bonus,Fun fact,Trap answer,Verify
+//   Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify
 //   Pack,90s Cartoons,📼                          <- optional: pack name and emoji
 //   Theme Tunes,Explained Badly,100,…,…,…,,,      <- a question (Board = the board's name)
 //   Sparkle,Draw easy,,Skateboard                 <- a Sparkle card (item in the Question column)
 
 const COLUMNS = {
   board: 'board', category: 'category', points: 'points', value: 'points', question: 'question', answer: 'answer',
-  bonus: 'bonus', funfact: 'funFact', trapanswer: 'trapAnswer', trap: 'trapAnswer', verify: 'verify',
+  bonus: 'bonus', funfact: 'funFact', verify: 'verify', // other columns are ignored
 };
 const REQUIRED = ['board', 'category', 'points', 'question', 'answer'];
 const SPARKLE_LISTS = { draweasy: ['draw', 'easy'], drawmedium: ['draw', 'medium'], drawtricky: ['draw', 'tricky'], charades: ['charades'], mimic: ['mimic'] };
@@ -109,7 +109,6 @@ function parseTable(text, { fallbackName = 'My pack' } = {}) {
       value: points, question, answer,
       ...(get(r, 'bonus') ? { bonus: get(r, 'bonus'), bonusPoints: 50 } : {}),
       ...(get(r, 'funFact') ? { funFact: get(r, 'funFact') } : {}),
-      ...(get(r, 'trapAnswer') ? { trapAnswer: get(r, 'trapAnswer') } : {}),
       ...(/^(y|yes|true|x|1|✓|✔)$/i.test(v) ? { verify: true } : {}),
     });
   });
@@ -149,10 +148,10 @@ function packToTable(pack) {
     if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
     return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
   };
-  const rows = [['Board', 'Category', 'Points', 'Question', 'Answer', 'Bonus', 'Fun fact', 'Trap answer', 'Verify']];
+  const rows = [['Board', 'Category', 'Points', 'Question', 'Answer', 'Bonus', 'Fun fact', 'Verify']];
   rows.push(['Pack', pack.name, pack.emoji || '']);
   for (const b of pack.boards) for (const c of b.categories) for (const q of c.questions) {
-    rows.push([b.name, c.name, q.value, q.question, q.answer, q.bonus || '', q.funFact || '', q.trapAnswer || '', q.verify ? 'yes' : '']);
+    rows.push([b.name, c.name, q.value, q.question, q.answer, q.bonus || '', q.funFact || '', q.verify ? 'yes' : '']);
   }
   const sp = pack.sparkle || {};
   const lists = [['Draw easy', sp.draw?.easy], ['Draw medium', sp.draw?.medium], ['Draw tricky', sp.draw?.tricky], ['Charades', sp.charades], ['Mimic', sp.mimic]];

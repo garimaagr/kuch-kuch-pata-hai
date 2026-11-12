@@ -208,16 +208,16 @@ function makePrompt() {
   const sparkleShape = mo.sparkle ? ',"sparkle":{"draw":{"easy":[],"medium":[],"tricky":[]},"charades":[],"mimic":[]}' : '';
   const reply = mo.format === 'table' ? [
     'Reply with ONLY a CSV table in one code block, with exactly this header row:',
-    'Board,Category,Points,Question,Answer,Bonus,Fun fact,Trap answer,Verify',
+    'Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify',
     '- First row after the header: Pack,<short pack name>,<one emoji>',
     '- Then one row per question. Board is the board\'s name (the same on every row of that board). Points are that board\'s values.',
-    '- Leave Fun fact and Trap answer empty when there isn\'t one. Verify is "yes" or empty.',
+    '- Leave Fun fact empty when there isn\'t one. Verify is "yes" or empty.',
     '- Put a cell in double quotes if it contains a comma or a quote, and write any quote inside it as "".',
     mo.sparkle ? '- Sparkle cards go at the end, one per row, with the card in the Question column: Sparkle,Draw easy,,<thing> (also Draw medium, Draw tricky, Charades, Mimic).' : null,
     '- If you run out of space, stop at the end of a row. When I say "continue", carry on from the next row.',
   ] : [
     'Reply with ONLY one JSON object in one code block, in exactly this format:',
-    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","trapAnswer":"...","verify":false}]}]}]' + sparkleShape + '}',
+    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
   ];
   return [
     'Make a trivia pack for a party buzzer game played by friends in the US and India.',
@@ -233,7 +233,6 @@ function makePrompt() {
     '- Answers short (a name, title or a few words).',
     '- Every question has "bonus": a quick, silly, safe thing to do in under 15 seconds that fits the answer. bonusPoints is 50.',
     '- Optional "funFact": one short "did you know" line.',
-    '- On about 3 questions per board, add "trapAnswer": the obvious answer people will say that is WRONG.',
     '- Only use facts you\'re confident about; if unsure set "verify": true.',
     '- Plain text only: no HTML, no links, no images, no song lyrics beyond 2–3 words.',
     '- Max lengths: question 300, answer 100, bonus 150, funFact 200 characters.',
@@ -265,7 +264,6 @@ function renderMakeOwn() {
       h('div', { class: 'muted' }, 'Tip: fix it in the box (or in your spreadsheet), or copy these lines to Claude and ask it to fix them.')));
   } else if (custom) {
     const p = custom.preview;
-    const traps = p.checks.filter((c) => c.kind === 'trap').length;
     const verify = p.checks.filter((c) => c.kind === 'verify').length;
     const startBtn = h('button', { class: 'big' }, '▶ Start game with this pack');
     startBtn.onclick = startNewGame;
@@ -278,10 +276,10 @@ function renderMakeOwn() {
       h('div', {}, `${p.questions} questions · ${p.boards.length} board${p.boards.length > 1 ? 's' : ''} · Sparkle deck: ${p.hasSparkle ? 'yes' : 'no (uses the party deck)'}`),
       p.boards.flatMap((b, bi) => [h('div', { class: 'mo-step' }, h('b', {}, `Board ${bi + 1}: ${b.name}`)), h('div', { class: 'cats' }, b.categories.join('  ·  '))]),
       p.checks.length
-        ? [h('b', {}, `⚠️ Check these (${verify} to verify, ${traps} trap answer${traps === 1 ? '' : 's'})`),
+        ? [h('b', {}, `⚠️ Check these (${verify} fact${verify === 1 ? '' : 's'} Claude wasn't sure of)`),
           h('ul', { class: 'mo-checks' }, p.checks.map((c) => h('li', {},
             h('div', { class: 'where' }, c.where), c.question, ' → ', h('b', {}, c.answer),
-            c.kind === 'trap' ? h('span', {}, `  (trap: "${c.trapAnswer}")`) : h('span', {}, '  🔍 verify this fact'))))]
+            h('span', {}, '  🔍 verify this fact'))))]
         : h('div', { class: 'muted' }, 'Nothing flagged to check.'),
       h('div', { class: 'row' }, startBtn, dlCsv, dl)));
   } else {
@@ -377,8 +375,7 @@ $('finishBig').onclick = emit('host:screen', 'winner');
 $('winnerBack').onclick = emit('host:screen', 'board');
 $('winnerNew').onclick = () => { state = null; openSetup(); };
 $('nextBoard').onclick = () => socket.emit('host:switchBoard', 1);
-$('trap').onclick = emit('host:trap');
-// Hold to peek: shows the answer (and trap answer) only while the button is held down.
+// Hold to peek: shows the answer only while the button is held down.
 const peek = (on) => show('peekBox', on && !!state?.current);
 $('peek').onpointerdown = (e) => { e.preventDefault(); peek(true); };
 for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('peek').addEventListener(ev, () => peek(false));
@@ -547,20 +544,17 @@ function render() {
     show('qAnswer', state.showAnswer);
     show('qDouble', !!q.double);
     $('qCategory').textContent = `${q.category} — ${q.double ? q.value * 2 : q.value}${q.double ? ' (Double!)' : ''}`;
-    // After the reveal: the trap answer with a big ❌, and the fun fact.
-    $('qTrap').textContent = q.trapAnswer ? `❌ Not "${q.trapAnswer}"` : '';
-    show('qTrap', state.showAnswer && !!q.trapAnswer);
+    // After the reveal: the fun fact.
     fill('qFact', q.funFact ? [h('b', {}, '💡 Did you know? '), q.funFact] : []);
     show('qFact', state.showAnswer && !!q.funFact);
-    show('trap', !!q.trapAnswer);
-    fill('peekBox', h('b', {}, 'Answer: '), q.answer, q.trapAnswer ? h('span', { class: 'muted' }, `   ·   Trap: ${q.trapAnswer}`) : null);
+    fill('peekBox', h('b', {}, 'Answer: '), q.answer);
 
     const b = state.buzz;
     const turn = b.order.find((e) => !b.locked.includes(e.teamId));
     $('buzzBadge').textContent = b.open ? 'Buzzers OPEN' : 'Closed';
     $('buzzBadge').className = 'badge ' + (b.open ? 'open' : 'closed');
     $('openBuzzers').disabled = b.open;
-    $('correct').disabled = $('wrong').disabled = $('trap').disabled = !turn;
+    $('correct').disabled = $('wrong').disabled = !turn;
     fill('funnyRow', state.teams.map((t) =>
       h('button', { class: 'funny', vars: { '--c': t.color }, data: { funny: t.id } }, `😂 +5 ${t.name}`)));
     const order = b.order.map((e) => {
@@ -658,7 +652,6 @@ function effects(screen, oldPts) {
     locked: b?.locked.length || 0,
     open: !!b?.open,
     showAnswer: !!state?.showAnswer,
-    traps: state?.current?.traps || 0,
     card: !!state?.sparkle?.hasCard,
     board: state?.boardNo,
     players: new Set(state?.players.map((x) => x.id)),
@@ -693,12 +686,6 @@ function effects(screen, oldPts) {
     fx.play('double');
     fx.banner('DOUBLE!');
   }
-  // Someone fell into the trap.
-  if (screen === 'question' && prev.key === p.key && prev.traps > p.traps) {
-    fx.play('trap');
-    fx.banner('🚨 TRAP! 🚨', 'trap');
-    fx.replay(document.body, 'redflash');
-  }
   if (screen === 'winner' && p.screen !== 'winner') { fx.play('winner'); fx.emojiRain(); }
 
   if (screen === 'question' && prev.key === p.key) {
@@ -707,7 +694,7 @@ function effects(screen, oldPts) {
       fx.play('buzz');
       [...$('order').children].slice(p.order).forEach((li) => li.classList.add('pop'));
     }
-    if (prev.locked > p.locked && prev.traps === p.traps) { fx.play('wrong'); fx.replay($('qText'), 'shake'); fx.replay(document.body, 'redflash'); }
+    if (prev.locked > p.locked) { fx.play('wrong'); fx.replay($('qText'), 'shake'); fx.replay(document.body, 'redflash'); }
     if (prev.showAnswer && !p.showAnswer) fx.play('reveal');
   }
   if (screen === 'bonus' && p.screen === 'question') fx.play('correct');

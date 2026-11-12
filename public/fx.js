@@ -91,13 +91,12 @@ const fx = (() => {
     sparkle: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, i * 0.07, 0.4, 'sine', 0.12)),
     reveal: () => { tone(392, 0, 0.2, 'triangle'); tone(523, 0.12, 0.35, 'triangle'); },
     double: () => [262, 330, 392, 523, 659, 784].forEach((f, i) => tone(f, i * 0.06, 0.25, 'square', 0.09)),
-    trap: () => [0, 0.3, 0.6].forEach((t) => { tone(440, t, 0.14, 'sawtooth', 0.14); tone(330, t + 0.14, 0.14, 'sawtooth', 0.14); }),
     winner: () => [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, [0, 0.15, 0.3, 0.45, 0.75, 1.0, 1.15, 1.35][i], 0.3, 'triangle', 0.16)),
   };
   function play(name) { sounds[name]?.(); }
   function setMuted(m) { muted = m; try { localStorage.setItem('fbMuted', m ? '1' : '0'); } catch {} }
 
-  // A huge word that pops over the screen for a moment ("DOUBLE!", "TRAP!").
+  // A huge word that pops over the screen for a moment ("DOUBLE!").
   function banner(text, kind = '') {
     const el = document.createElement('div');
     el.className = `big-banner ${kind}`;
