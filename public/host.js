@@ -34,7 +34,7 @@ let lastSecs = null;
 const seen = new Set(); // players already shown, so only new ones pop in
 
 const MODES = {
-  draw: { label: '🎨 Draw (Diwali)', doing: 'is drawing…' },
+  draw: { label: '🎨 Draw', doing: 'is drawing…' },
   charades: { label: '🤐 Dumb Charades', doing: 'is acting it out…' },
   mimic: { label: '🎭 Mimic', doing: '' },
 };
@@ -62,6 +62,7 @@ function gotRoom(res) {
     code = secret = null; save('fbHostCode', null); save('fbHostSecret', null); render(); return;
   }
   show('pinBox', false);
+  setupOpen = false;
   code = res.code;
   secret = res.secret;
   qr = res.qr;
@@ -69,8 +70,108 @@ function gotRoom(res) {
   save('fbHostSecret', secret);
 }
 
+// ---- Setup screen: theme cards, Start, and the optional Customise options ----
+let setupOpen = false;
+let packs = []; // theme summaries from the server (names and categories only)
+const SETUP_DEFAULTS = { packId: 'desi', boards: 'both', sparkleEvery: 6, modes: { draw: true, charades: true, mimic: true }, bonuses: true, double: true, cats: {} };
+let setup = (() => {
+  try { return { ...SETUP_DEFAULTS, ...JSON.parse(load('fbSetup') || '{}') }; } catch { return { ...SETUP_DEFAULTS }; }
+})();
+const saveSetup = () => save('fbSetup', JSON.stringify(setup));
+const packOf = (id) => packs.find((p) => p.id === id && !p.missing);
+
+// The host's category picks for one board of the chosen pack (default flags unless they changed them).
+// Picks are saved by category name, so they survive categories being added to a pack later.
+function catPicks(pack, bi) {
+  const cats = pack.boards[bi].categories;
+  const saved = setup.cats[pack.id]?.[bi];
+  if (Array.isArray(saved)) {
+    const idx = saved.map((name) => cats.findIndex((c) => c.name === name));
+    if (idx.every((i) => i >= 0)) return idx.sort((x, y) => x - y);
+  }
+  return cats.map((c, i) => (c.default ? i : -1)).filter((i) => i >= 0);
+}
+const boardsInPlay = (pack) => (pack.boards.length < 2 ? [0] : setup.boards === '1' ? [0] : setup.boards === '2' ? [1] : [0, 1]);
+
+function openSetup() {
+  if (state && !confirm('Start a new game? The current game will be left behind.')) return;
+  setupOpen = true;
+  show('pinBox', false);
+  socket.emit('host:packs', (list) => {
+    packs = Array.isArray(list) ? list : [];
+    if (!packOf(setup.packId)) setup.packId = packs.find((p) => !p.missing)?.id || 'desi';
+    render();
+  });
+  render();
+}
+
 function startNewGame() {
-  socket.emit('host:new', { pin: $('pin').value }, gotRoom);
+  const pack = packOf(setup.packId);
+  if (!pack) return;
+  const categories = pack.boards.map((_, bi) => catPicks(pack, bi));
+  socket.emit('host:new', {
+    pin: $('pin').value, packId: pack.id, boards: setup.boards, sparkleEvery: setup.sparkleEvery,
+    modes: setup.modes, bonuses: setup.bonuses, double: setup.double, categories,
+  }, gotRoom);
+}
+
+// A row of toggle buttons; `options` is [[value, label], ...].
+function seg(id, options, current, onPick) {
+  fill(id, options.map(([value, label]) =>
+    h('button', { class: `segbtn ${value === current ? 'on' : ''}`, type: 'button', onclick: null }, label)));
+  [...$(id).children].forEach((b, i) => (b.onclick = () => { onPick(options[i][0]); saveSetup(); renderSetup(); }));
+}
+
+function renderSetup() {
+  // Theme cards
+  const cards = packs.map((p) => h('button', {
+    class: `theme ${p.id === setup.packId ? 'selected' : ''} ${p.missing ? 'soon' : ''}`, disabled: !!p.missing, data: { pack: p.id },
+  }, h('div', { class: 'theme-emoji' }, p.emoji || '🎲'), h('div', { class: 'theme-name' }, p.name), p.missing ? h('small', {}, 'Coming soon') : null));
+  cards.push(h('button', { class: 'theme soon', disabled: true }, h('div', { class: 'theme-emoji' }, '✨'), h('div', { class: 'theme-name' }, 'Make your own'), h('small', {}, 'Coming soon')));
+  fill('themes', cards);
+  if (!packs.length) fill('themes', h('p', { class: 'muted' }, 'Loading themes…'));
+
+  const pack = packOf(setup.packId);
+  show('themeDetail', !!pack);
+  if (!pack) return;
+  const inPlay = boardsInPlay(pack);
+  $('themeTitle').textContent = `${pack.emoji || ''} ${pack.name}`;
+  $('themeBoards').textContent = inPlay.map((bi) => `Board ${bi + 1}: ${pack.boards[bi].name}`).join('  ·  ');
+
+  seg('optBoards', pack.boards.length < 2 ? [['both', 'Board 1']] :
+    [['both', 'Both'], ['1', 'Board 1 only'], ['2', 'Board 2 only']], pack.boards.length < 2 ? 'both' : setup.boards, (v) => (setup.boards = v));
+  seg('optSparkle', [[0, 'Off'], [3, 'Every 3'], [4, 'Every 4'], [6, 'Every 6']], setup.sparkleEvery, (v) => (setup.sparkleEvery = v));
+  fill('optModes', Object.entries(MODES).map(([m, info]) => {
+    const b = h('button', { class: `segbtn ${setup.modes[m] !== false ? 'on' : ''}`, type: 'button' }, info.label);
+    b.onclick = () => { setup.modes = { ...setup.modes, [m]: setup.modes[m] === false }; saveSetup(); renderSetup(); };
+    return b;
+  }));
+  seg('optBonuses', [[true, 'On'], [false, 'Off']], setup.bonuses, (v) => (setup.bonuses = v));
+  seg('optDouble', [[true, 'On'], [false, 'Off']], setup.double, (v) => (setup.double = v));
+
+  // Category swapping: each board in play needs exactly 5.
+  let allFive = true;
+  fill('optCats', inPlay.map((bi) => {
+    const board = pack.boards[bi];
+    const picks = catPicks(pack, bi);
+    if (picks.length !== 5) allFive = false;
+    const chips = board.categories.map((c, ci) => {
+      const b = h('button', { class: `segbtn ${picks.includes(ci) ? 'on' : ''}`, type: 'button' }, c.name);
+      b.onclick = () => {
+        const next = picks.includes(ci) ? picks.filter((x) => x !== ci) : [...picks, ci];
+        setup.cats = { ...setup.cats, [pack.id]: { ...(setup.cats[pack.id] || {}), [bi]: next.map((i) => board.categories[i].name) } };
+        saveSetup(); renderSetup();
+      };
+      return b;
+    });
+    return h('div', { class: 'opt' },
+      h('span', { class: 'opt-label' }, `Board ${bi + 1} categories `, h('small', { class: picks.length === 5 ? 'ok' : 'bad' }, `${picks.length} of 5 picked`)),
+      h('div', { class: 'seg' }, chips));
+  }));
+  $('startGame').disabled = !allFive;
+  const modesOn = Object.values(setup.modes).some((v) => v !== false);
+  $('setupNote').textContent = !allFive ? 'Pick exactly 5 categories for each board (in Customise).'
+    : `Sparkle ${setup.sparkleEvery && modesOn ? `every ${setup.sparkleEvery} questions` : 'off'} · bonuses ${setup.bonuses ? 'on' : 'off'} · hidden Double ${setup.double ? 'on' : 'off'}`;
 }
 
 // Runs on first connect and after every reconnect.
@@ -98,18 +199,39 @@ socket.on('flash', ({ teamId, text }) => {
   setTimeout(() => el.remove(), 1300);
 });
 
-$('newGame').onclick = () => {
-  if (state && !confirm('Start a new game? The current game will be left behind.')) return;
-  startNewGame();
+$('newGame').onclick = openSetup;
+$('startGame').onclick = startNewGame;
+$('cancelSetup').onclick = () => { setupOpen = false; render(); };
+$('themes').onclick = (e) => {
+  const b = e.target.closest('[data-pack]');
+  if (!b || b.disabled) return;
+  setup.packId = b.dataset.pack;
+  saveSetup();
+  renderSetup();
 };
+$('resetSetup').onclick = () => { setup = { ...SETUP_DEFAULTS, packId: setup.packId }; saveSetup(); renderSetup(); };
+$('finishGame').onclick = () => { if (confirm('Finish the game and show the winner?')) socket.emit('host:screen', 'winner'); };
+$('finishBig').onclick = emit('host:screen', 'winner');
+$('winnerBack').onclick = emit('host:screen', 'board');
+$('winnerNew').onclick = () => { state = null; openSetup(); };
+$('nextBoard').onclick = () => socket.emit('host:switchBoard', 1);
+$('trap').onclick = emit('host:trap');
+// Hold to peek: shows the answer (and trap answer) only while the button is held down.
+const peek = (on) => show('peekBox', on && !!state?.current);
+$('peek').onpointerdown = (e) => { e.preventDefault(); peek(true); };
+for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('peek').addEventListener(ev, () => peek(false));
 $('pinGo').onclick = startNewGame;
 $('pin').onkeydown = (e) => { if (e.key === 'Enter') startNewGame(); };
 $('makeTeams').onclick = () => socket.emit('host:makeTeams', Number($('teamCount').value));
 $('toBoard').onclick = emit('host:screen', 'board');
-$('startBig').onclick = () => $('newGame').click();
+$('startBig').onclick = openSetup;
 $('toLobby').onclick = emit('host:screen', 'lobby');
 $('toSparkle').onclick = emit('host:screen', 'sparkle');
-$('switchBoard').onclick = () => socket.emit('host:switchBoard', state.boardNo === 0 ? 1 : 0);
+$('switchBoard').onclick = () => {
+  const to = state.boardNo === 0 ? 1 : 0;
+  if (to === 1 && !state.boardDone && !confirm(`Board 1 isn't finished. Jump to Board 2 anyway? You can come back.`)) return;
+  socket.emit('host:switchBoard', to);
+};
 $('teams').onchange = (e) => {
   if (e.target.dataset.player) socket.emit('host:movePlayer', { playerId: e.target.dataset.player, teamId: Number(e.target.value) });
 };
@@ -191,14 +313,17 @@ $('scores').onclick = (e) => {
 };
 
 function render() {
-  const screen = !state ? 'start' : state.current ? 'question' : state.bonus ? 'bonus' : state.screen;
-  for (const s of ['start', 'lobby', 'board', 'question', 'bonus', 'sparkle']) show(s, s === screen);
+  const screen = setupOpen ? 'setup' : !state ? 'start' : state.current ? 'question' : state.bonus ? 'bonus' : state.screen;
+  for (const s of ['start', 'setup', 'lobby', 'board', 'question', 'bonus', 'sparkle', 'winner']) show(s, s === screen);
   show('toLobby', screen === 'board');
-  show('toSparkle', screen === 'board');
+  show('toSparkle', screen === 'board' && !!state?.settings?.sparkleEvery);
+  show('finishGame', screen === 'board');
   show('switchBoard', screen === 'board' && state?.boardCount > 1);
+  show('cancelSetup', !!state);
   if (state) $('switchBoard').textContent = state.boardNo === 0 ? 'Board 2 →' : '← Board 1';
+  if (screen === 'setup') renderSetup();
   show('scores', ['board', 'question', 'bonus', 'sparkle'].includes(screen));
-  if (!state) return;
+  if (!state || screen === 'setup') return;
 
   const teamOf = (id) => state.teams.find((t) => t.id === id);
   const playerOf = (id) => state.players.find((p) => p.id === id);
@@ -229,6 +354,13 @@ function render() {
   }));
 
   // ---- Board ----
+  const boardName = state.boardNames?.[state.boardNo] || '';
+  $('boardTitle').textContent = `${state.packEmoji || ''} ${state.packName || ''}  ·  ${state.boardCount > 1 ? `Board ${state.boardNo + 1}: ` : ''}${boardName}`;
+  const lastBoard = state.boardNo === state.boardCount - 1;
+  show('boardDone', state.boardDone);
+  show('nextBoard', state.boardDone && !lastBoard);
+  show('finishBig', state.boardDone && (lastBoard || state.allDone));
+  $('boardDoneText').textContent = state.allDone ? '🎉 All done!' : `🎉 ${boardName || 'This board'} is finished!`;
   $('grid').style.gridTemplateColumns = `repeat(${state.board.length}, 1fr)`;
   const rows = Math.max(...state.board.map((c) => c.values.length));
   const cells = state.board.map((c) => h('div', { class: 'cat' }, c.category));
@@ -251,13 +383,22 @@ function render() {
     $('qText').classList.toggle('xlong', q.question.length > 380); // really wordy ones get smaller still
     $('qAnswer').textContent = q.answer;
     show('qAnswer', state.showAnswer);
+    show('qDouble', !!q.double);
+    $('qCategory').textContent = `${q.category} — ${q.double ? q.value * 2 : q.value}${q.double ? ' (Double!)' : ''}`;
+    // After the reveal: the trap answer with a big ❌, and the fun fact.
+    $('qTrap').textContent = q.trapAnswer ? `❌ Not "${q.trapAnswer}"` : '';
+    show('qTrap', state.showAnswer && !!q.trapAnswer);
+    fill('qFact', q.funFact ? [h('b', {}, '💡 Did you know? '), q.funFact] : []);
+    show('qFact', state.showAnswer && !!q.funFact);
+    show('trap', !!q.trapAnswer);
+    fill('peekBox', h('b', {}, 'Answer: '), q.answer, q.trapAnswer ? h('span', { class: 'muted' }, `   ·   Trap: ${q.trapAnswer}`) : null);
 
     const b = state.buzz;
     const turn = b.order.find((e) => !b.locked.includes(e.teamId));
     $('buzzBadge').textContent = b.open ? 'Buzzers OPEN' : 'Closed';
     $('buzzBadge').className = 'badge ' + (b.open ? 'open' : 'closed');
     $('openBuzzers').disabled = b.open;
-    $('correct').disabled = $('wrong').disabled = !turn;
+    $('correct').disabled = $('wrong').disabled = $('trap').disabled = !turn;
     fill('funnyRow', state.teams.map((t) =>
       h('button', { class: 'funny', vars: { '--c': t.color }, data: { funny: t.id } }, `😂 +5 ${t.name}`)));
     const order = b.order.map((e) => {
@@ -285,7 +426,7 @@ function render() {
 
     fill('spTeams', state.teams.map((t) =>
       h('button', { class: `pick ${sp.teamId === t.id ? 'selected' : ''}`, vars: { '--c': t.color }, data: { team: t.id } }, t.name)));
-    fill('spModes', Object.entries(MODES).map(([m, info]) =>
+    fill('spModes', Object.entries(MODES).filter(([m]) => state.settings.modes.includes(m)).map(([m, info]) =>
       h('button', { class: `pick ${sp.mode === m ? 'selected' : ''}`, data: { mode: m }, disabled: !cardsLeft(m) },
         info.label, ' ', h('small', {}, `(${cardsLeft(m)} left)`))));
 
@@ -322,6 +463,15 @@ function render() {
     }
   }
 
+  // ---- Winner ----
+  if (screen === 'winner') {
+    const ranked = [...state.teams].sort((a, b) => b.score - a.score);
+    const top = ranked.filter((t) => t.score === ranked[0]?.score);
+    fill('winnerName', top.length > 1 ? "It's a tie!" : [h('span', { color: top[0]?.color }, top[0]?.name || ''), ' wins!']);
+    fill('ranking', ranked.map((t, i) => h('li', { class: i === 0 || t.score === ranked[0].score ? 'first' : '' },
+      h('span', { color: t.color }, t.name), h('b', {}, t.score))));
+  }
+
   // ---- Scores ----
   const oldPts = new Map([...document.querySelectorAll('.score')].map((el) => [el.dataset.scoreTeam, el.dataset.pts]));
   fill('scores', state.teams.map((t) =>
@@ -346,6 +496,7 @@ function effects(screen, oldPts) {
     locked: b?.locked.length || 0,
     open: !!b?.open,
     showAnswer: !!state?.showAnswer,
+    traps: state?.current?.traps || 0,
     card: !!state?.sparkle?.hasCard,
     board: state?.boardNo,
     players: new Set(state?.players.map((x) => x.id)),
@@ -375,13 +526,26 @@ function effects(screen, oldPts) {
     }
   }
 
+  // A hidden Double just opened.
+  if (screen === 'question' && prev.key !== p.key && state.current?.double) {
+    fx.play('double');
+    fx.banner('DOUBLE!');
+  }
+  // Someone fell into the trap.
+  if (screen === 'question' && prev.key === p.key && prev.traps > p.traps) {
+    fx.play('trap');
+    fx.banner('🚨 TRAP! 🚨', 'trap');
+    fx.replay(document.body, 'redflash');
+  }
+  if (screen === 'winner' && p.screen !== 'winner') { fx.play('winner'); fx.emojiRain(); }
+
   if (screen === 'question' && prev.key === p.key) {
     if (prev.open && !p.open) fx.play('open');
     if (prev.order > p.order) {
       fx.play('buzz');
       [...$('order').children].slice(p.order).forEach((li) => li.classList.add('pop'));
     }
-    if (prev.locked > p.locked) { fx.play('wrong'); fx.replay($('qText'), 'shake'); fx.replay(document.body, 'redflash'); }
+    if (prev.locked > p.locked && prev.traps === p.traps) { fx.play('wrong'); fx.replay($('qText'), 'shake'); fx.replay(document.body, 'redflash'); }
     if (prev.showAnswer && !p.showAnswer) fx.play('reveal');
   }
   if (screen === 'bonus' && p.screen === 'question') fx.play('correct');

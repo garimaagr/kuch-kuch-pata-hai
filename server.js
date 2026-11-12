@@ -15,8 +15,10 @@ const PORT = Number(process.env.PORT) || 3000;
 // Render sets RENDER_EXTERNAL_URL automatically; PUBLIC_URL overrides it.
 const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
 
-// The Sparkle Round starts by itself after every this many finished board questions.
+// Default: the Sparkle Round starts by itself after every this many finished board questions.
+// The host can change it per game in Customise (off, 3, 4 or 6).
 const SPARKLE_EVERY = 6;
+const SPARKLE_CHOICES = [0, 3, 4, 6]; // 0 = off
 
 // ---- Limits (the hosted server is public and small) ----
 const MAX_ROOMS = 20;
@@ -99,6 +101,7 @@ function publicState(room) {
     players: [...room.players.values()].map(({ id, name, teamId, connected }) => ({ id, name, teamId, connected })),
     buzz: room.buzz,
     sparkle: publicSparkle(room),
+    double: !!room.current?.double, // phones show "DOUBLE!" while a Double tile is open
   };
 }
 
@@ -111,6 +114,12 @@ function hostState(room) {
     used: room.used,
     boardNo: room.boardNo,
     boardCount: room.boards.length,
+    boardNames: room.boardNames,
+    boardDone: room.used.length >= room.board.length * 5,
+    allDone: room.usedBy.every((u, i) => u.length >= room.boards[i].length * 5),
+    packName: room.packName,
+    packEmoji: room.packEmoji,
+    settings: room.settings,
     current: room.current && { ...room.current, ...room.board[room.current.cat].questions[room.current.idx], category: room.board[room.current.cat].category, note: room.board[room.current.cat].note },
     showAnswer: room.showAnswer,
     bonus: room.bonus,
@@ -229,9 +238,60 @@ function loadBuiltinPack(id, opts = {}) {
   return res.pack;
 }
 
-// The pack's boards in the shape the game uses, each with its 5 default categories.
-function boardsFromPack(pack) {
-  return pack.boards.map((b) => defaultCategories(b).map((c) => ({ category: c.name, note: c.note, questions: c.questions })));
+// The theme cards on the setup screen, in order. A theme without a pack file shows as "coming soon".
+const THEMES = [
+  { id: 'desi', name: 'Desi Night', emoji: '🪔' },
+  { id: 'world', name: 'World Trivia', emoji: '🌍' },
+  { id: 'tv', name: 'TV & Movies', emoji: '📺' },
+  { id: 'sports', name: 'Sports', emoji: '🏆' },
+];
+
+// What the setup screen needs: names, boards and categories (no questions or answers).
+function packSummaries() {
+  return THEMES.map((t) => {
+    try {
+      const pack = loadBuiltinPack(t.id);
+      return {
+        id: t.id, name: pack.name, emoji: pack.emoji || t.emoji, hasSparkle: !!pack.sparkle,
+        boards: pack.boards.map((b) => {
+          const defaults = defaultCategories(b);
+          return { name: b.name, categories: b.categories.map((c) => ({ name: c.name, default: defaults.includes(c) })) };
+        }),
+      };
+    } catch {
+      return { ...t, missing: true };
+    }
+  });
+}
+
+// Checks the host's chosen categories for one board: exactly 5 different valid indexes, else the defaults.
+function chosenCategories(board, picks) {
+  const ok = Array.isArray(picks) && picks.length === 5 && new Set(picks).size === 5 &&
+    picks.every((i) => Number.isInteger(i) && i >= 0 && i < board.categories.length);
+  const cats = ok ? [...picks].sort((a, b) => a - b).map((i) => board.categories[i]) : defaultCategories(board);
+  return cats.map((c) => ({ category: c.name, note: c.note, questions: c.questions }));
+}
+
+// The host's game options, checked. Anything odd falls back to the default.
+function gameSettings(opts, pack) {
+  const o = opts && typeof opts === 'object' ? opts : {};
+  const which = ['both', '1', '2'].includes(o.boards) ? o.boards : 'both';
+  const boardIdx = pack.boards.length < 2 ? [0] : which === '1' ? [0] : which === '2' ? [1] : [0, 1];
+  const modes = MODES.filter((m) => (o.modes && typeof o.modes === 'object' ? o.modes[m] !== false : true));
+  const every = SPARKLE_CHOICES.includes(o.sparkleEvery) ? o.sparkleEvery : SPARKLE_EVERY;
+  return {
+    boardIdx,
+    sparkleEvery: modes.length ? every : 0, // no modes on = Sparkle off
+    modes,
+    bonuses: o.bonuses !== false,
+    double: o.double !== false,
+    categories: boardIdx.map((bi) => (Array.isArray(o.categories) ? o.categories[bi] : null)),
+  };
+}
+
+// One hidden Double tile per board, never in the lowest-value row.
+function pickDoubles(boards) {
+  return boards.map((b) => `${Math.floor(Math.random() * b.length)}-${1 + Math.floor(Math.random() * 4)}`);
 }
 
 // Sparkle decks: the pack's own cards, or the generic party deck for any mode the pack leaves empty.
@@ -252,9 +312,10 @@ function currentQuestion(room) {
 
 // A question counts as finished when it was answered correctly or its answer was shown.
 function finishQuestion(room, counts) {
+  const every = room.settings.sparkleEvery;
   if (counts) {
     room.finished++;
-    if (room.finished % SPARKLE_EVERY === 0) room.sparkleDue = true;
+    if (every && room.finished % every === 0) room.sparkleDue = true;
   }
   closeQuestion(room);
 }
@@ -311,6 +372,9 @@ io.on('connection', (socket) => {
   });
   const reply = (cb, value) => { if (typeof cb === 'function') cb(value); };
 
+  // The theme cards for the setup screen.
+  on('host:packs', (cb) => reply(cb, packSummaries()));
+
   on('host:new', async (opts, cb) => {
     if (typeof opts === 'function') { cb = opts; opts = {}; }
     if (HOST_PIN && !sameSecret(opts?.pin, HOST_PIN)) {
@@ -332,17 +396,22 @@ io.on('connection', (socket) => {
       if (!ip) return reply(cb, { ok: false, error: "This laptop isn't connected to wifi, so phones can't reach it. Connect to your home wifi and click New game again." });
       joinUrl = `http://${ip}:${PORT}/join/${code}`;
     }
-    let pack, boards, decks;
+    let pack, settings, boards, decks;
     try {
-      pack = loadBuiltinPack(DEFAULT_PACK);
-      boards = boardsFromPack(pack);
+      const packId = THEMES.some((t) => t.id === opts?.packId) ? opts.packId : DEFAULT_PACK;
+      pack = loadBuiltinPack(packId);
+      settings = gameSettings(opts, pack);
+      boards = settings.boardIdx.map((bi, i) => chosenCategories(pack.boards[bi], settings.categories[i]));
       decks = decksFromPack(pack);
     } catch (err) {
       return reply(cb, { ok: false, error: 'Could not load the question pack: ' + err.message });
     }
+    const boardNames = settings.boardIdx.map((bi) => pack.boards[bi].name);
+    const publicSettings = { sparkleEvery: settings.sparkleEvery, modes: settings.modes, bonuses: settings.bonuses, double: settings.double };
     const room = {
       code, joinUrl, hostSecret: crypto.randomBytes(18).toString('base64url'), lastActive: Date.now(), players: new Map(), teams: [], buzz: buzz.newBuzz(),
-      screen: 'lobby', packName: pack.name, boards, usedBy: boards.map(() => []), boardNo: 0,
+      screen: 'lobby', packName: pack.name, packEmoji: pack.emoji || '', settings: publicSettings,
+      boards, boardNames, usedBy: boards.map(() => []), boardNo: 0, doubles: pickDoubles(boards),
       board: boards[0], used: null, current: null, showAnswer: false,
       finished: 0, sparkleDue: false, bonus: null,
       decks, drawn: Object.fromEntries(DECK_KEYS.map((k) => [k, []])), sparkle: null,
@@ -398,7 +467,8 @@ io.on('connection', (socket) => {
   // ---- Board and scoring ----
   on('host:screen', (screen) => {
     const room = hostRoom();
-    if (!room || !['lobby', 'board', 'sparkle'].includes(screen)) return;
+    if (!room || !['lobby', 'board', 'sparkle', 'winner'].includes(screen) || room.current || room.bonus) return;
+    if (screen === 'sparkle' && !room.settings.sparkleEvery) return; // Sparkle is off for this game
     room.screen = screen;
     room.sparkle = screen === 'sparkle' ? newSparkle() : null;
     send(room);
@@ -417,7 +487,8 @@ io.on('connection', (socket) => {
   on('host:pickTile', ({ cat, idx } = {}) => {
     const room = hostRoom();
     if (!room || room.current || room.bonus || !room.board[cat]?.questions[idx] || room.used.includes(`${cat}-${idx}`)) return;
-    room.current = { cat, idx };
+    // The hidden Double: worth 2x if right, costs 2x if wrong.
+    room.current = { cat, idx, double: room.settings.double && room.doubles[room.boardNo] === `${cat}-${idx}` };
     room.showAnswer = false;
     buzz.resetBuzz(room.buzz);
     send(room);
@@ -429,9 +500,9 @@ io.on('connection', (socket) => {
     const team = turn && room.teams.find((t) => t.id === turn.teamId);
     if (!team) return;
     const q = currentQuestion(room);
-    team.score += q.value;
+    team.score += q.value * (room.current.double ? 2 : 1);
     finishQuestion(room, true);
-    if (q.bonus) room.bonus = { teamId: team.id, text: q.bonus, points: Number(q.bonusPoints) || 0 };
+    if (q.bonus && room.settings.bonuses) room.bonus = { teamId: team.id, text: q.bonus, points: Number(q.bonusPoints) || 0 };
     else goToBoard(room);
     send(room);
   });
@@ -441,8 +512,21 @@ io.on('connection', (socket) => {
     const turn = room && buzz.currentTurn(room.buzz);
     const team = turn && room.teams.find((t) => t.id === turn.teamId);
     if (!team) return;
-    team.score -= currentQuestion(room).value;
+    team.score -= currentQuestion(room).value * (room.current.double ? 2 : 1);
     buzz.lockTeam(room.buzz, team.id); // next team in line gets the turn
+    send(room);
+  });
+
+  // Trap: the team said the obvious-but-wrong answer. Same as Wrong, plus a horn on the TV.
+  on('host:trap', () => {
+    const room = hostRoom();
+    const turn = room && buzz.currentTurn(room.buzz);
+    const team = turn && room.teams.find((t) => t.id === turn.teamId);
+    const q = room && currentQuestion(room);
+    if (!team || !q?.trapAnswer) return;
+    team.score -= q.value * (room.current.double ? 2 : 1);
+    buzz.lockTeam(room.buzz, team.id);
+    room.current.traps = (room.current.traps || 0) + 1;
     send(room);
   });
 
@@ -508,7 +592,7 @@ io.on('connection', (socket) => {
 
   on('host:sparkleMode', (mode) => {
     const room = sparkleRoom();
-    if (!room || room.sparkle.cardIdx != null || !MODES.includes(mode)) return;
+    if (!room || room.sparkle.cardIdx != null || !room.settings.modes.includes(mode)) return;
     room.sparkle.mode = mode;
     room.sparkle.level = null;
     room.sparkle.empty = false;

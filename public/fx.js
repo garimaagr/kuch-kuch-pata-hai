@@ -90,9 +90,38 @@ const fx = (() => {
     timeUp: () => [392, 330, 262].forEach((f, i) => tone(f, i * 0.18, 0.35, 'triangle', 0.2)),
     sparkle: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, i * 0.07, 0.4, 'sine', 0.12)),
     reveal: () => { tone(392, 0, 0.2, 'triangle'); tone(523, 0.12, 0.35, 'triangle'); },
+    double: () => [262, 330, 392, 523, 659, 784].forEach((f, i) => tone(f, i * 0.06, 0.25, 'square', 0.09)),
+    trap: () => [0, 0.3, 0.6].forEach((t) => { tone(440, t, 0.14, 'sawtooth', 0.14); tone(330, t + 0.14, 0.14, 'sawtooth', 0.14); }),
+    winner: () => [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, [0, 0.15, 0.3, 0.45, 0.75, 1.0, 1.15, 1.35][i], 0.3, 'triangle', 0.16)),
   };
   function play(name) { sounds[name]?.(); }
   function setMuted(m) { muted = m; try { localStorage.setItem('fbMuted', m ? '1' : '0'); } catch {} }
 
-  return { confetti, replay, play, setMuted, get muted() { return muted; } };
+  // A huge word that pops over the screen for a moment ("DOUBLE!", "TRAP!").
+  function banner(text, kind = '') {
+    const el = document.createElement('div');
+    el.className = `big-banner ${kind}`;
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1800);
+  }
+
+  // Emoji confetti for the winner screen: plain spans falling with a CSS animation.
+  function emojiRain(emojis = ['🎉', '🏆', '⭐', '🥳', '✨', '🎊', '🪅']) {
+    const box = document.getElementById('emojiRain');
+    if (!box || calm) return;
+    box.replaceChildren();
+    for (let i = 0; i < 60; i++) {
+      const s = document.createElement('span');
+      s.textContent = emojis[i % emojis.length];
+      s.style.left = Math.random() * 100 + 'vw';
+      s.style.animationDelay = Math.random() * 2.5 + 's';
+      s.style.animationDuration = 2.5 + Math.random() * 2.5 + 's';
+      s.style.fontSize = 1.4 + Math.random() * 1.8 + 'rem';
+      box.appendChild(s);
+    }
+    setTimeout(() => box.replaceChildren(), 8000);
+  }
+
+  return { confetti, replay, play, banner, emojiRain, setMuted, get muted() { return muted; } };
 })();

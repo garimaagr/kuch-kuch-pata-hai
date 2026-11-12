@@ -24,7 +24,8 @@ It prints something like:
 ```
 
 1. Open the host page on the laptop and share that window to the TV. Turn the TV or laptop volume up for the buzz, correct and wrong sounds (the 🔊 button at the top mutes them).
-2. Click **New game**. Friends scan the QR code (or type the link) and enter their name.
+2. Click **New game**, pick a theme card, and click **▶ Start**. Friends scan the QR code (or type the link) and enter their name.
+   - **Customise** (optional, remembered for next time): play both boards, Board 1 only or Board 2 only; Sparkle Round off or every 3, 4 or 6 questions; which Sparkle modes; bonuses on or off; the hidden Double on or off; and which 5 categories each board uses.
 3. Click **Make random teams** (2–4 teams). Use **Reshuffle** or the dropdowns to move people around.
 4. Click **Go to the board →** and play:
    - Click a tile, read the question, then **Open buzzers**. The buzz order shows on screen.
@@ -32,9 +33,13 @@ It prints something like:
    - **😂 +5** buttons (one per team) reward funny wrong answers. Tap as often as you like.
    - **Show answer** and **Back to board** when you're done. Used tiles go grey.
    - Fix any mistakes with the **− / +** buttons under each team's score.
-   - **Board 2 →** (top right) switches to the second board, and **← Board 1** goes back. Scores carry over, and each board remembers its used tiles.
+   - **👁 Hold to peek** shows the answer (and any trap answer) while you hold it. If the TV mirrors your screen, it shows there too.
+   - **Board 2 is worth double** (200–1000). When Board 1 is finished, tap **Play Board 2 (Double!)**. Scores carry over. **Board 2 →** at the top jumps early if you're short on time.
+   - **Hidden Double:** one tile per board (never a 100/200) is secretly a Double. It flashes "DOUBLE!" and is worth 2× if right, −2× if wrong.
+   - **🚨 Trap!** appears when a question has a trap answer (the obvious-but-wrong one). If a team says it, tap Trap: it counts as wrong, with a horn. The reveal shows the trap answer with a ❌ and any "💡 Did you know?" fun fact.
+   - **🏁 Finish game** (or **See the winner** when every board is done) shows the winner screen.
 5. **✨ Sparkle Round** starts by itself after every 6 finished questions (answered correctly, or answer shown). You can also open it with the **✨ Sparkle Round** button on the board, or leave it with **Skip Sparkle**.
-   - Pick the team, then the mode: 🎨 **Draw (Diwali)**, 🤐 **Dumb Charades** or 🎭 **Mimic**. For Draw, the team also picks a difficulty: 🌶️ Easy (50), 🌶️🌶️ Medium (100) or 🌶️🌶️🌶️ Tricky (200). The team chooses its performer, and you tap their name to draw a card. **Skip card** draws another.
+   - Pick the team, then the mode: 🎨 **Draw**, 🤐 **Dumb Charades** or 🎭 **Mimic**. For Draw, the team also picks a difficulty: 🌶️ Easy (50), 🌶️🌶️ Medium (100) or 🌶️🌶️🌶️ Tricky (200). The team chooses its performer, and you tap their name to draw a card. **Skip card** draws another.
    - Draw / Dumb Charades: the secret word or movie shows only on the performer's phone. Draw on paper or a whiteboard. For Draw, the TV shows the difficulty and points, and **🎉 Guessed!** adds them automatically.
    - Mimic: the prompt shows on the TV.
    - Tap **▶ Start timer** when the performer is ready (60 seconds). **⏸ Stop timer** pauses it.

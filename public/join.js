@@ -124,6 +124,7 @@ function render() {
   const turn = b.order.find((e) => !b.locked.includes(e.teamId));
 
   $('buzz').disabled = !b.open || !!myEntry || locked;
+  show('doubleNote', !!state.double);
 
   let msg;
   if (locked) msg = 'Locked out for this question';
