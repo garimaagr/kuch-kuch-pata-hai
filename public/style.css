@@ -327,3 +327,19 @@ button.trap { background: #ff5252; color: #fff; }
 .double-note { font-size: 1.6rem; font-weight: 900; color: #ffcc33; animation: bounce 0.6s cubic-bezier(.2,1.6,.4,1); }
 #customise summary { list-style: none; }
 #customise summary::-webkit-details-marker { display: none; }
+
+/* ---- Make your own ---- */
+.make-own { margin-bottom: 1rem; }
+.make-own .opt input { flex: 1; width: auto; margin: 0; }
+.mo-step { margin: 1.1rem 0 0.4rem; }
+.mo-box { width: 100%; box-sizing: border-box; font: 0.85rem/1.4 ui-monospace, Menlo, monospace; background: #160f2e; color: #e8e2ff; border: 1px solid #4a3a8a; border-radius: 10px; padding: 0.7rem; resize: vertical; }
+.make-own .row { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
+.filebtn { display: inline-block; font-weight: 700; padding: 0.6em 1em; border-radius: 8px; cursor: pointer; background: #3b2d66; border: 1px solid #5a4796; color: #fff; box-shadow: 0 3px 0 rgba(0,0,0,0.35); }
+.mo-errors { margin-top: 0.8rem; background: #3a1630; border: 1px solid #ff6b6b; border-radius: 10px; padding: 0.6rem 1rem; }
+.mo-errors li { margin: 0.2rem 0; }
+.mo-preview { margin-top: 0.8rem; background: #1f1640; border: 1px solid #7CFC9A; border-radius: 10px; padding: 0.8rem 1rem; }
+.mo-preview h3 { margin-top: 0; }
+.mo-preview .cats { color: #b8aee0; margin: 0.2rem 0 0.6rem; }
+.mo-checks { margin: 0.4rem 0; padding-left: 1.2rem; }
+.mo-checks li { margin: 0.35rem 0; }
+.mo-checks .where { color: #b8aee0; font-size: 0.85rem; }

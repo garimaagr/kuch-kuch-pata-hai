@@ -45,6 +45,18 @@ It prints something like:
    - Tap **▶ Start timer** when the performer is ready (60 seconds). **⏸ Stop timer** pauses it.
    - Give **+25 / +50 / +100**, any amount in the box, or **No points**. Then you're back on the board.
 
+## ✨ Make your own (any topic, made with Claude)
+
+1. Click **New game**, then the **✨ Make your own** card.
+2. Type a **topic** (like "90s cartoons" or "our office"), pick the **tone** (😂 Silly, 🙂 Mixed or 🤓 Nerdy), **1 or 2 boards**, and whether you want a **Sparkle deck**.
+3. Click **📋 Copy prompt** and paste it into Claude (claude.ai).
+4. Copy Claude's **whole reply** and paste it into the **Paste pack here** box. (If Claude gives you a file instead, download it and use **📂 Upload .json**.)
+5. Click **✔ Check pack**. If something's wrong, you'll see a list like "Board 2, category 3 has 4 questions, needs 5". Copy those lines back to Claude and ask for the whole pack again.
+6. Read the **⚠️ Check these** list: facts Claude wasn't sure of (🔍 verify) and every trap answer. Fix anything wrong in the paste box and check again.
+7. Click **⬇ Download pack** to keep it. Next time, just upload that file. Then **▶ Start game with this pack**.
+
+An uploaded pack lives only in that game's memory and is gone when the server restarts, so keep the downloaded file. It must follow the strict rules: exactly 5 categories per board, and questions up to 300 characters.
+
 ## Play online (Render)
 
 Hosted on Render, the game has a public https link, so phones can join on any network, mobile data included.
@@ -59,13 +71,14 @@ Hosted on Render, the game has a public https link, so phones can join on any ne
 
 **Things to know about the free plan**
 - It **sleeps after about 15 minutes with no visitors**. Open the host page a minute before people arrive, because the first load can take 30–60 seconds.
-- The game lives in memory, so a redeploy or restart ends the current game. Don't push changes mid-game.
+- The game lives in memory, so a redeploy or restart ends the current game and clears any uploaded "Make your own" pack. Don't push changes mid-game.
 - Anyone with the link could open the host page and start their own game. Your game's room code keeps theirs separate.
 
 **Keeping the public link safe**
 - Only the laptop that clicked **New game** can run that game. It keeps a secret key, so seeing the room code on the TV isn't enough to take over.
 - **Optional host PIN:** in Render, open the service → **Environment** → **Add Environment Variable**, set `HOST_PIN` to a number you choose, and save. After that, `/host` asks for the PIN before starting a game. Leave it unset for no PIN.
-- Built-in limits: at most 20 games at once, 30 players per game, 5 new games per network every 10 minutes, and games idle for 3 hours are deleted.
+- Built-in limits: at most 20 games at once, 30 players per game, 5 new games per network every 10 minutes, 10 "Make your own" pack checks per game every 10 minutes, and games idle for 3 hours are deleted.
+- Every pasted or uploaded pack is treated as untrusted: it's checked again on the server when the game starts, and its text is always shown as plain text.
 
 ## Game night checklist (home wifi)
 

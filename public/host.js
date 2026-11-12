@@ -78,7 +78,7 @@ let setup = (() => {
   try { return { ...SETUP_DEFAULTS, ...JSON.parse(load('fbSetup') || '{}') }; } catch { return { ...SETUP_DEFAULTS }; }
 })();
 const saveSetup = () => save('fbSetup', JSON.stringify(setup));
-const packOf = (id) => packs.find((p) => p.id === id && !p.missing);
+const packOf = (id) => (id === 'custom' ? customSummary() : packs.find((p) => p.id === id && !p.missing));
 
 // The host's category picks for one board of the chosen pack (default flags unless they changed them).
 // Picks are saved by category name, so they survive categories being added to a pack later.
@@ -99,7 +99,7 @@ function openSetup() {
   show('pinBox', false);
   socket.emit('host:packs', (list) => {
     packs = Array.isArray(list) ? list : [];
-    if (!packOf(setup.packId)) setup.packId = packs.find((p) => !p.missing)?.id || 'desi';
+    if (setup.packId !== 'custom' && !packOf(setup.packId)) setup.packId = packs.find((p) => !p.missing)?.id || 'desi';
     render();
   });
   render();
@@ -108,10 +108,10 @@ function openSetup() {
 function startNewGame() {
   const pack = packOf(setup.packId);
   if (!pack) return;
-  const categories = pack.boards.map((_, bi) => catPicks(pack, bi));
+  const which = pack.id === 'custom' ? { pack: custom.pack } : { packId: pack.id, categories: pack.boards.map((_, bi) => catPicks(pack, bi)) };
   socket.emit('host:new', {
-    pin: $('pin').value, packId: pack.id, boards: setup.boards, sparkleEvery: setup.sparkleEvery,
-    modes: setup.modes, bonuses: setup.bonuses, double: setup.double, categories,
+    pin: $('pin').value, ...which, boards: setup.boards, sparkleEvery: setup.sparkleEvery,
+    modes: setup.modes, bonuses: setup.bonuses, double: setup.double,
   }, gotRoom);
 }
 
@@ -127,9 +127,12 @@ function renderSetup() {
   const cards = packs.map((p) => h('button', {
     class: `theme ${p.id === setup.packId ? 'selected' : ''} ${p.missing ? 'soon' : ''}`, disabled: !!p.missing, data: { pack: p.id },
   }, h('div', { class: 'theme-emoji' }, p.emoji || '🎲'), h('div', { class: 'theme-name' }, p.name), p.missing ? h('small', {}, 'Coming soon') : null));
-  cards.push(h('button', { class: 'theme soon', disabled: true }, h('div', { class: 'theme-emoji' }, '✨'), h('div', { class: 'theme-name' }, 'Make your own'), h('small', {}, 'Coming soon')));
+  cards.push(h('button', { class: `theme ${setup.packId === 'custom' ? 'selected' : ''}`, data: { pack: 'custom' } },
+    h('div', { class: 'theme-emoji' }, '✨'), h('div', { class: 'theme-name' }, 'Make your own'), h('small', {}, 'Your topic, made with Claude')));
   fill('themes', cards);
   if (!packs.length) fill('themes', h('p', { class: 'muted' }, 'Loading themes…'));
+  show('makeOwn', setup.packId === 'custom');
+  if (setup.packId === 'custom') renderMakeOwn();
 
   const pack = packOf(setup.packId);
   show('themeDetail', !!pack);
@@ -151,7 +154,7 @@ function renderSetup() {
 
   // Category swapping: each board in play needs exactly 5.
   let allFive = true;
-  fill('optCats', inPlay.map((bi) => {
+  fill('optCats', pack.id === 'custom' ? [] : inPlay.map((bi) => {
     const board = pack.boards[bi];
     const picks = catPicks(pack, bi);
     if (picks.length !== 5) allFive = false;
@@ -173,6 +176,139 @@ function renderSetup() {
   $('setupNote').textContent = !allFive ? 'Pick exactly 5 categories for each board (in Customise).'
     : `Sparkle ${setup.sparkleEvery && modesOn ? `every ${setup.sparkleEvery} questions` : 'off'} · bonuses ${setup.bonuses ? 'on' : 'off'} · hidden Double ${setup.double ? 'on' : 'off'}`;
 }
+
+// ---- Make your own: build a prompt, paste Claude's reply, check it on the server, then start ----
+const MO_DEFAULTS = { topic: '', tone: 'silly', boards: 2, sparkle: true };
+let mo = (() => {
+  try { return { ...MO_DEFAULTS, ...JSON.parse(load('fbMakeOwn') || '{}') }; } catch { return { ...MO_DEFAULTS }; }
+})();
+const saveMo = () => save('fbMakeOwn', JSON.stringify(mo));
+let custom = null; // { pack, preview } after a pack passes the server's check; lives only in this page
+let moErrors = null; // problems from the last check
+
+const TONES = {
+  silly: ['😂 Silly', 'funny and guessable; badly explained and overly wordy clues'],
+  mixed: ['🙂 Mixed', 'fun with some real trivia'],
+  nerdy: ['🤓 Nerdy', 'harder, for fans, still playful'],
+};
+
+// The setup screen's summary for an uploaded pack: its 5 categories per board are all in play.
+function customSummary() {
+  if (!custom) return null;
+  const p = custom.preview;
+  return { id: 'custom', name: p.name, emoji: p.emoji || '✨', hasSparkle: p.hasSparkle,
+    boards: p.boards.map((b) => ({ name: b.name, categories: b.categories.map((name) => ({ name, default: true })) })) };
+}
+
+function makePrompt() {
+  const topic = mo.topic.trim() || '(your topic)';
+  const sparkleRule = mo.sparkle
+    ? '- Also include "sparkle": "draw" with 6 easy, 6 medium, 6 tricky things to draw on this topic; "charades" with 10 things to act out; "mimic" with 8 "do X like Y" prompts. Light, kind, party-safe.'
+    : '- Do not include "sparkle".';
+  const sparkleShape = mo.sparkle ? ',"sparkle":{"draw":{"easy":[],"medium":[],"tricky":[]},"charades":[],"mimic":[]}' : '';
+  return [
+    'Make a trivia pack for a party buzzer game played by friends in the US and India.',
+    '',
+    `Topic: ${topic}`,
+    `Tone: ${TONES[mo.tone][1]}`,
+    `Boards: ${mo.boards}`,
+    '',
+    'Rules:',
+    '- Each board has 5 categories × 5 questions. Board 1 values: 100,200,300,400,500. Board 2 (if any) values: 200,400,600,800,1000. Lowest = almost everyone gets it; highest = a real stretch.',
+    '- Use fun category formats: "___ Explained Badly", "Overly Wordy ___", "___ in Emoji", "Who Said It?", "Real or Made Up?".',
+    '- Should make sense to people in both the US and India. Avoid very local references.',
+    '- Answers short (a name, title or a few words).',
+    '- Every question has "bonus": a quick, silly, safe thing to do in under 15 seconds that fits the answer. bonusPoints is 50.',
+    '- Optional "funFact": one short "did you know" line.',
+    '- On about 3 questions per board, add "trapAnswer": the obvious answer people will say that is WRONG.',
+    '- Only use facts you\'re confident about; if unsure set "verify": true.',
+    '- Plain text only: no HTML, no links, no images, no song lyrics beyond 2–3 words.',
+    '- Max lengths: question 300, answer 100, bonus 150, funFact 200 characters.',
+    sparkleRule,
+    '',
+    'Reply with ONLY one JSON object in one code block, in exactly this format:',
+    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","trapAnswer":"...","verify":false}]}]}]' + sparkleShape + '}',
+  ].join('\n');
+}
+
+function moSeg(id, options, current, onPick) {
+  seg(id, options, current, (v) => { onPick(v); saveMo(); });
+}
+
+function renderMakeOwn() {
+  if (document.activeElement !== $('moTopic')) $('moTopic').value = mo.topic;
+  moSeg('moTone', Object.entries(TONES).map(([k, [label]]) => [k, label]), mo.tone, (v) => (mo.tone = v));
+  moSeg('moBoards', [[1, '1 board'], [2, '2 boards']], mo.boards, (v) => (mo.boards = v));
+  moSeg('moSparkle', [[true, 'Yes'], [false, 'No']], mo.sparkle, (v) => (mo.sparkle = v));
+  $('moPrompt').value = makePrompt();
+
+  if (moErrors) {
+    fill('moResult', h('div', { class: 'mo-errors' },
+      h('b', {}, '⚠️ This pack needs fixing:'),
+      h('ul', {}, moErrors.map((e) => h('li', {}, e))),
+      h('div', { class: 'muted' }, 'Tip: tell Claude what\'s wrong (copy these lines) and ask for the whole pack again.')));
+  } else if (custom) {
+    const p = custom.preview;
+    const traps = p.checks.filter((c) => c.kind === 'trap').length;
+    const verify = p.checks.filter((c) => c.kind === 'verify').length;
+    const startBtn = h('button', { class: 'big' }, '▶ Start game with this pack');
+    startBtn.onclick = startNewGame;
+    const dl = h('button', { class: 'secondary' }, '⬇ Download pack');
+    dl.onclick = downloadPack;
+    fill('moResult', h('div', { class: 'mo-preview' },
+      h('h3', {}, `✅ ${p.emoji} ${p.name}`),
+      h('div', {}, `${p.questions} questions · ${p.boards.length} board${p.boards.length > 1 ? 's' : ''} · Sparkle deck: ${p.hasSparkle ? 'yes' : 'no (uses the party deck)'}`),
+      p.boards.flatMap((b, bi) => [h('div', { class: 'mo-step' }, h('b', {}, `Board ${bi + 1}: ${b.name}`)), h('div', { class: 'cats' }, b.categories.join('  ·  '))]),
+      p.checks.length
+        ? [h('b', {}, `⚠️ Check these (${verify} to verify, ${traps} trap answer${traps === 1 ? '' : 's'})`),
+          h('ul', { class: 'mo-checks' }, p.checks.map((c) => h('li', {},
+            h('div', { class: 'where' }, c.where), c.question, ' → ', h('b', {}, c.answer),
+            c.kind === 'trap' ? h('span', {}, `  (trap: "${c.trapAnswer}")`) : h('span', {}, '  🔍 verify this fact'))))]
+        : h('div', { class: 'muted' }, 'Nothing flagged to check.'),
+      h('div', { class: 'row' }, startBtn, dl)));
+  } else {
+    fill('moResult');
+  }
+}
+
+function checkPack() {
+  const text = $('moPaste').value;
+  if (!text.trim()) { custom = null; moErrors = ['Paste Claude\'s reply (or upload its file) first.']; return renderMakeOwn(); }
+  $('moCheck').disabled = true;
+  socket.emit('host:checkPack', { text, code, secret }, (res) => {
+    $('moCheck').disabled = false;
+    if (res?.ok) { custom = { pack: res.pack, preview: res.preview }; moErrors = null; }
+    else { custom = null; moErrors = res?.errors?.length ? res.errors : ['Something went wrong. Try again.']; }
+    renderSetup();
+  });
+}
+
+function downloadPack() {
+  if (!custom) return;
+  const blob = new Blob([JSON.stringify(custom.pack, null, 2) + '\n'], { type: 'application/json' });
+  const slug = custom.pack.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'my-pack';
+  const a = h('a', { href: URL.createObjectURL(blob), download: `${slug}.json` });
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+$('moTopic').oninput = () => { mo.topic = $('moTopic').value.slice(0, 60); saveMo(); $('moPrompt').value = makePrompt(); };
+$('moCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('moPrompt').value); }
+  catch { $('moPrompt').select(); document.execCommand('copy'); }
+  $('moCopied').textContent = 'Copied! Now paste it into Claude.';
+  setTimeout(() => ($('moCopied').textContent = ''), 4000);
+};
+$('moPaste').oninput = () => { if (custom || moErrors) { custom = null; moErrors = null; renderSetup(); } };
+$('moCheck').onclick = checkPack;
+$('moFile').onchange = () => {
+  const file = $('moFile').files[0];
+  $('moFile').value = '';
+  if (!file) return;
+  if (file.size > 300 * 1024) { custom = null; moErrors = ['That file is too big (over 300 KB).']; return renderSetup(); }
+  file.text().then((text) => { $('moPaste').value = text; checkPack(); });
+};
 
 // Runs on first connect and after every reconnect.
 socket.on('connect', () => {

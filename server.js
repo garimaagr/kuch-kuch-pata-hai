@@ -8,7 +8,7 @@ const { Server } = require('socket.io');
 const QRCode = require('qrcode');
 const buzz = require('./buzz');
 const { makeLimiter, cleanText } = require('./limits');
-const { validatePack, defaultCategories } = require('./pack');
+const { validatePack, defaultCategories, checkUploadedText } = require('./pack');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -29,6 +29,7 @@ const MAX_MESSAGE_BYTES = 300 * 1024;
 // Optional: set HOST_PIN on the server and /host asks for it before starting a game.
 const HOST_PIN = process.env.HOST_PIN || '';
 const roomCreation = makeLimiter(5, 10 * 60 * 1000); // 5 new games per IP per 10 minutes
+const packChecks = makeLimiter(10, 10 * 60 * 1000); // 10 "Make your own" pack checks per room (or IP) per 10 minutes
 
 const app = express();
 const server = http.createServer(app);
@@ -137,6 +138,7 @@ function cleanupRooms(now = Date.now()) {
     }
   }
   roomCreation.prune(now);
+  packChecks.prune(now);
 }
 setInterval(cleanupRooms, 10 * 60 * 1000).unref();
 
@@ -375,6 +377,19 @@ io.on('connection', (socket) => {
   // The theme cards for the setup screen.
   on('host:packs', (cb) => reply(cb, packSummaries()));
 
+  // "Make your own": checks a pasted pack and sends back the cleaned pack plus a preview.
+  // Changes nothing on the server (the PIN is asked at Start). Counted per game (when the host has one)
+  // or per network, and only when hosted.
+  on('host:checkPack', ({ text, code, secret } = {}, cb) => {
+    const room = rooms.get(String(code || '').toUpperCase());
+    const key = room && sameSecret(secret, room.hostSecret) ? 'room:' + room.code : 'ip:' + clientIp(socket);
+    if (PUBLIC_URL && !packChecks.allow(key)) {
+      return reply(cb, { ok: false, errors: ['Too many pack checks. Please wait 10 minutes and try again.'] });
+    }
+    if (typeof text !== 'string') return reply(cb, { ok: false, errors: ['Paste the pack first.'] });
+    reply(cb, checkUploadedText(text));
+  });
+
   on('host:new', async (opts, cb) => {
     if (typeof opts === 'function') { cb = opts; opts = {}; }
     if (HOST_PIN && !sameSecret(opts?.pin, HOST_PIN)) {
@@ -398,8 +413,15 @@ io.on('connection', (socket) => {
     }
     let pack, settings, boards, decks;
     try {
-      const packId = THEMES.some((t) => t.id === opts?.packId) ? opts.packId : DEFAULT_PACK;
-      pack = loadBuiltinPack(packId);
+      if (opts?.pack != null) {
+        // An uploaded pack: never trusted, so checked again here with the strict rules. Kept only in this room.
+        const res = validatePack(opts.pack, { kind: 'upload' });
+        if (!res.ok) return reply(cb, { ok: false, error: 'That pack has problems: ' + res.errors.slice(0, 3).join(' ') });
+        pack = res.pack;
+      } else {
+        const packId = THEMES.some((t) => t.id === opts?.packId) ? opts.packId : DEFAULT_PACK;
+        pack = loadBuiltinPack(packId);
+      }
       settings = gameSettings(opts, pack);
       boards = settings.boardIdx.map((bi, i) => chosenCategories(pack.boards[bi], settings.categories[i]));
       decks = decksFromPack(pack);

@@ -169,4 +169,31 @@ function defaultCategories(board) {
   return flagged.length === 5 ? flagged : board.categories.slice(0, 5);
 }
 
-module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories };
+// What the "Make your own" screen shows after a check: names, counts, and a "check these" list
+// (questions marked verify, and every trap answer). Takes a pack that already passed validatePack.
+function packPreview(pack) {
+  const checks = [];
+  pack.boards.forEach((b, bi) => b.categories.forEach((c) => c.questions.forEach((q) => {
+    const where = `Board ${bi + 1} · ${c.name} · ${q.value}`;
+    if (q.verify) checks.push({ where, kind: 'verify', question: q.question, answer: q.answer });
+    if (q.trapAnswer) checks.push({ where, kind: 'trap', question: q.question, answer: q.answer, trapAnswer: q.trapAnswer });
+  })));
+  return {
+    name: pack.name, emoji: pack.emoji || '',
+    boards: pack.boards.map((b) => ({ name: b.name, categories: b.categories.map((c) => c.name) })),
+    questions: pack.boards.reduce((n, b) => n + b.categories.length * 5, 0),
+    hasSparkle: !!pack.sparkle,
+    checks,
+  };
+}
+
+// Pasted text or file contents -> { ok, pack, preview } or { ok: false, errors }. Always the strict upload rules.
+function checkUploadedText(text) {
+  const parsed = parsePackText(text);
+  if (!parsed.ok) return parsed;
+  const res = validatePack(parsed.value, { kind: 'upload' });
+  if (!res.ok) return res;
+  return { ok: true, pack: res.pack, preview: packPreview(res.pack) };
+}
+
+module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, packPreview, checkUploadedText };

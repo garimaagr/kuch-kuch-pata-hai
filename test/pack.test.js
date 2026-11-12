@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { parsePackText, validatePack, defaultCategories } = require('../pack');
+const { parsePackText, validatePack, defaultCategories, checkUploadedText } = require('../pack');
 
 // A small valid pack with `boardCount` boards.
 function goodPack(boardCount = 2) {
@@ -121,4 +121,23 @@ test('every built-in pack passes the validator', () => {
     const res = validatePack(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')), { kind: 'builtin', allowNoBoards: f === 'party.json' });
     assert.ok(res.ok, `${f}: ${res.errors?.join('\n')}`);
   }
+});
+
+test('"Make your own": a pasted Claude reply is checked with the strict rules and previewed', () => {
+  const p = goodPack();
+  p.boards[0].categories[1].questions[2].verify = true;
+  p.boards[1].categories[0].questions[4].trapAnswer = 'The obvious one';
+  const res = checkUploadedText('Here is your pack!\n```json\n' + JSON.stringify(p) + '\n```');
+  assert.ok(res.ok, res.errors?.join('\n'));
+  assert.strictEqual(res.preview.questions, 50);
+  assert.deepStrictEqual(res.preview.boards.map((b) => b.name), ['Board 1', 'Board 2']);
+  assert.deepStrictEqual(res.preview.checks.map((c) => [c.kind, c.where]), [
+    ['verify', 'Board 1 · Category 2 · 300'],
+    ['trap', 'Board 2 · Category 1 · 1000'],
+  ]);
+  // Uploads never get the built-in allowances (longer questions, extra categories).
+  const long = goodPack();
+  long.boards[0].categories[0].questions[0].question = 'x'.repeat(400);
+  assert.match(checkUploadedText(JSON.stringify(long)).errors[0], /max 300/);
+  assert.match(checkUploadedText('no pack here').errors[0], /Couldn't find a pack/);
 });
