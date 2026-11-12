@@ -135,6 +135,22 @@ Publishing is invite-only, and every board is reviewed before anyone else can se
 
 **Tags:** add a tag, rename it or change its emoji, **Merge** one tag into another (its boards move over and the old tag is deleted), or **Delete** a tag nobody uses.
 
+**Players see the 🌐 Community tab** on the setup screen once at least 1 board is approved. Until then it only shows ⭐ Featured and ✨ Make your own.
+
+**Seeding boards** (`seed/`)
+- `seed/` holds copies of the four built-in themes, cut to the rules for shared boards (5 categories per board, questions up to 300 characters, Sparkle cards up to 80). Desi Night's copy uses Film Pehchano instead of Professor Pyarelal Explains (those questions are too long) and leaves out one long Mimic card. Add your own packs there too (any `.json` pack, e.g. one downloaded from Make your own; it can include `"tags"`).
+- Run it against a database (your `.env`, or the live one by passing its connection string):
+
+  ```bash
+  npm run seed-community
+  ```
+
+  ```bash
+  DATABASE_URL="postgresql://…main branch…" npm run seed-community
+  ```
+
+- Each file goes into the review queue as a **pending** board under the share code label "Garima" (made for this if you don't have one; it's switched off, so it can't be used to share). Review and approve them in `/admin` like any other board. Running it again skips boards that are already in the database.
+
 ## Game night checklist (home wifi)
 
 - **Same wifi:** everyone's phone must be on the same wifi as the laptop. A guest network usually won't work. Phones need wifi turned on, not mobile data.

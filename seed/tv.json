@@ -1,0 +1,513 @@
+{
+  "format": "buzz-pack-v2",
+  "name": "TV & Movies",
+  "emoji": "📺",
+  "teams": [
+    "Team Popcorn",
+    "Team Remote",
+    "Team Binge",
+    "Team Spoiler"
+  ],
+  "tags": [
+    "TV",
+    "Movies"
+  ],
+  "kidFriendly": false,
+  "boards": [
+    {
+      "name": "Shows",
+      "categories": [
+        {
+          "name": "Shows Explained Badly",
+          "note": "A TV show described badly. Name the show 📺",
+          "questions": [
+            {
+              "value": 100,
+              "question": "Six friends in New York who somehow afford huge apartments while spending all day on one orange sofa in a coffee shop.",
+              "answer": "Friends",
+              "bonus": "Say \"How you doin'?\" exactly like Joey",
+              "bonusPoints": 50,
+              "funFact": "The coffee shop was called Central Perk."
+            },
+            {
+              "value": 200,
+              "question": "Documentary crew films a paper company for nine years, and the boss keeps looking straight at the camera in pain.",
+              "answer": "The Office",
+              "bonus": "Stare into the \"camera\" like Jim for 3 full seconds",
+              "bonusPoints": 50,
+              "funFact": "The US show is a remake of the British original with Ricky Gervais."
+            },
+            {
+              "value": 300,
+              "question": "Several very large families fight over one uncomfortable chair made of swords. Also: dragons.",
+              "answer": "Game of Thrones",
+              "bonus": "Hum the opening theme for 5 seconds",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "A mild-mannered chemistry teacher makes some very questionable career choices in the New Mexico desert.",
+              "answer": "Breaking Bad",
+              "bonus": "Say \"Say my name\" in your scariest Walter White voice",
+              "bonusPoints": 50
+            },
+            {
+              "value": 500,
+              "question": "Four selfish New Yorkers, nine seasons, and famously \"a show about nothing\".",
+              "answer": "Seinfeld",
+              "bonus": "Do the slap-bass theme music with your mouth",
+              "bonusPoints": 50,
+              "funFact": "Jerry Seinfeld turned down a reported $100+ million to make a tenth season.",
+              "verify": true
+            }
+          ]
+        },
+        {
+          "name": "Shows in Emoji",
+          "note": "Emojis spell out a TV show. Name the show 📺",
+          "questions": [
+            {
+              "value": 100,
+              "question": "🧇👧🔦🚲👹",
+              "answer": "Stranger Things",
+              "bonus": "Flicker an imaginary light and look terrified",
+              "bonusPoints": 50
+            },
+            {
+              "value": 200,
+              "question": "🦑🎮💰🟢🔴",
+              "answer": "Squid Game",
+              "bonus": "Say \"Red light… green light!\" in the creepy doll voice",
+              "bonusPoints": 50,
+              "funFact": "It is still Netflix's most-watched series ever.",
+              "verify": true
+            },
+            {
+              "value": 300,
+              "question": "💸🎭🏦🇪🇸",
+              "answer": "Money Heist (La Casa de Papel)",
+              "bonus": "Put on an imaginary Dalí mask and say \"¡Hola!\"",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "👑🇬🇧☕🏰",
+              "answer": "The Crown",
+              "bonus": "Do the slowest, most royal wave you can",
+              "bonusPoints": 50
+            },
+            {
+              "value": 500,
+              "question": "✈️💥🏝️🔢",
+              "answer": "Lost",
+              "bonus": "Say \"We have to go back!\" with full drama",
+              "bonusPoints": 50
+            }
+          ]
+        },
+        {
+          "name": "Catchphrase: Who Said It?",
+          "note": "A TV catchphrase. Name the character (and the show) 🗣️",
+          "questions": [
+            {
+              "value": 100,
+              "question": "\"D'oh!\"",
+              "answer": "Homer Simpson",
+              "bonus": "Say it like Homer and slap your forehead",
+              "bonusPoints": 50
+            },
+            {
+              "value": 200,
+              "question": "\"That's what she said.\"",
+              "answer": "Michael Scott (The Office)",
+              "bonus": "Say it like Michael, then look at the camera",
+              "bonusPoints": 50
+            },
+            {
+              "value": 300,
+              "question": "\"Bazinga!\"",
+              "answer": "Sheldon Cooper (The Big Bang Theory)",
+              "bonus": "Knock three times and say \"Penny\" three times",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "\"I am the one who knocks.\"",
+              "answer": "Walter White (Breaking Bad)",
+              "bonus": "Say it in character while putting on an imaginary pork-pie hat",
+              "bonusPoints": 50
+            },
+            {
+              "value": 500,
+              "question": "\"Legen… wait for it… dary!\"",
+              "answer": "Barney Stinson (How I Met Your Mother)",
+              "bonus": "Say it in character and adjust an imaginary tie",
+              "bonusPoints": 50
+            }
+          ]
+        },
+        {
+          "name": "Cartoons Explained Badly",
+          "note": "A cartoon described badly. Name the cartoon 🐭",
+          "questions": [
+            {
+              "value": 100,
+              "question": "Cat chases mouse. Mouse wins. Every single time. For 80+ years. No words needed.",
+              "answer": "Tom and Jerry",
+              "bonus": "Do Tom's scream when his tail gets caught",
+              "bonusPoints": 50,
+              "funFact": "The cartoons won seven Oscars."
+            },
+            {
+              "value": 200,
+              "question": "Cheerful square sponge who lives in a pineapple under the sea and flips burgers for a crab.",
+              "answer": "SpongeBob SquarePants",
+              "bonus": "Do SpongeBob's laugh for 3 seconds",
+              "bonusPoints": 50
+            },
+            {
+              "value": 300,
+              "question": "Yellow family of five, in the same clothes since 1989. Nobody has aged a day.",
+              "answer": "The Simpsons",
+              "bonus": "Hum the theme tune for 5 seconds",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "Four teenagers and a talking dog solve mysteries, and the monster is always a man in a mask.",
+              "answer": "Scooby-Doo",
+              "bonus": "Say \"Ruh-roh!\" like Scooby",
+              "bonusPoints": 50
+            },
+            {
+              "value": 500,
+              "question": "Boy with an arrow tattoo on his head, the last of his kind, must master water, earth, fire and air.",
+              "answer": "Avatar: The Last Airbender",
+              "bonus": "Bend an imaginary element dramatically",
+              "bonusPoints": 50,
+              "funFact": "It has nothing to do with James Cameron's blue-people Avatar."
+            }
+          ]
+        },
+        {
+          "name": "Real or Made Up? (TV)",
+          "note": "A TV \"fact\". Answer \"real\" or \"made up\" 🤔",
+          "questions": [
+            {
+              "value": 100,
+              "question": "Real or made up: In the last seasons of Friends, each of the six main actors was paid $1 million per episode.",
+              "answer": "Real",
+              "bonus": "Do the Friends clap: clap-clap-clap-CLAP",
+              "bonusPoints": 50
+            },
+            {
+              "value": 200,
+              "question": "Real or made up: A Simpsons episode from 2000 joked about Donald Trump becoming US president.",
+              "answer": "Real",
+              "bonus": "Say \"Excellent…\" like Mr. Burns, fingers together",
+              "bonusPoints": 50
+            },
+            {
+              "value": 300,
+              "question": "Real or made up: A modern takeaway coffee cup was accidentally left in a Game of Thrones scene.",
+              "answer": "Real",
+              "bonus": "Sip from an imaginary cup like a dragon queen",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "Real or made up: Bryan Cranston and Aaron Paul (Walter and Jesse) started a mezcal brand together.",
+              "answer": "Real (Dos Hombres)",
+              "bonus": "Say \"Yeah, science!\" like Jesse",
+              "bonusPoints": 50
+            },
+            {
+              "value": 500,
+              "question": "Real or made up: Stranger Things was the first show Netflix ever made itself.",
+              "answer": "Made up (House of Cards and Lilyhammer came first)",
+              "bonus": "Say \"Are you still watching?\" like the Netflix screen",
+              "bonusPoints": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Movies",
+      "categories": [
+        {
+          "name": "Movies Explained Badly",
+          "note": "A movie plot described badly. Name the film 🎬",
+          "questions": [
+            {
+              "value": 200,
+              "question": "Young lion runs away from home, learns a carefree song from a meerkat and a warthog, then comes back to sort out his uncle.",
+              "answer": "The Lion King",
+              "bonus": "Hold up an imaginary baby lion on top of a cliff",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "Very expensive ship, a door with plenty of room for two, and a necklace someone just throws in the sea.",
+              "answer": "Titanic",
+              "bonus": "Do the \"I'm flying\" pose with a teammate",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "Rich man brings dinosaurs back to life for a theme park. Health and safety: not consulted.",
+              "answer": "Jurassic Park",
+              "bonus": "Walk like a T. rex with tiny arms",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "Banker spends 19 years digging out of prison with a tiny rock hammer, hiding the hole behind a poster.",
+              "answer": "The Shawshank Redemption",
+              "bonus": "Escape through an imaginary tunnel and celebrate in the \"rain\"",
+              "bonusPoints": 50
+            },
+            {
+              "value": 1000,
+              "question": "Thieves break into a man's dream inside a dream inside a dream, and everyone keeps checking a spinning top.",
+              "answer": "Inception",
+              "bonus": "Spin an imaginary top and stare at it nervously",
+              "bonusPoints": 50
+            }
+          ]
+        },
+        {
+          "name": "Movies in Emoji",
+          "note": "Emojis spell out a movie. Name the film 🍿",
+          "questions": [
+            {
+              "value": 200,
+              "question": "🕷️🧑🏙️🕸️",
+              "answer": "Spider-Man",
+              "bonus": "Shoot imaginary webs and say \"thwip\"",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "❄️👸👸⛄",
+              "answer": "Frozen",
+              "bonus": "Throw imaginary ice from your hands, very dramatically",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "🐀👨‍🍳🇫🇷🍲",
+              "answer": "Ratatouille",
+              "bonus": "Taste an imaginary soup like a French food critic",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "🧙‍♂️💍🌋👣",
+              "answer": "The Lord of the Rings",
+              "bonus": "Say \"You shall not pass!\" like Gandalf",
+              "bonusPoints": 50
+            },
+            {
+              "value": 1000,
+              "question": "👦🇮🇳📺❓💰",
+              "answer": "Slumdog Millionaire",
+              "bonus": "Say \"Final answer?\" like a quiz-show host",
+              "bonusPoints": 50,
+              "funFact": "It won eight Oscars, including Best Picture."
+            }
+          ]
+        },
+        {
+          "name": "Famous Lines: Who Said It?",
+          "note": "A famous movie line. Name the character (and the film) 🗣️",
+          "questions": [
+            {
+              "value": 200,
+              "question": "\"To infinity and beyond!\"",
+              "answer": "Buzz Lightyear (Toy Story)",
+              "bonus": "Say it in character and do the flying pose",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "\"I'll be back.\"",
+              "answer": "The Terminator",
+              "bonus": "Say it in your best robot accent",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "\"Why so serious?\"",
+              "answer": "The Joker (The Dark Knight)",
+              "bonus": "Say it in your creepiest Joker voice",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "\"You're gonna need a bigger boat.\"",
+              "answer": "Chief Brody (Jaws)",
+              "bonus": "Hum the two-note shark music while creeping towards someone",
+              "bonusPoints": 50,
+              "funFact": "The line was reportedly made up on the spot.",
+              "verify": true
+            },
+            {
+              "value": 1000,
+              "question": "\"Here's looking at you, kid.\"",
+              "answer": "Rick Blaine (Casablanca)",
+              "bonus": "Say it in your best old Hollywood voice",
+              "bonusPoints": 50
+            }
+          ]
+        },
+        {
+          "name": "Desi Goes Global",
+          "note": "Indian stories the whole world watched. Name the film 🌏",
+          "questions": [
+            {
+              "value": 200,
+              "question": "A boy, a Bengal tiger called Richard Parker, and one very small lifeboat for 227 days.",
+              "answer": "Life of Pi",
+              "bonus": "Share an imaginary lifeboat with a teammate playing the tiger",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "Two friends, one evil British governor, and a dance-off so strong the song won an Oscar.",
+              "answer": "RRR",
+              "bonus": "Do the Naatu Naatu shuffle for 5 seconds",
+              "bonusPoints": 50,
+              "funFact": "\"Naatu Naatu\" won Best Original Song in 2023."
+            },
+            {
+              "value": 600,
+              "question": "British-Indian girl in London secretly plays football while her parents want her in the kitchen.",
+              "answer": "Bend It Like Beckham",
+              "bonus": "Celebrate a goal like a footballer",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "Villagers in 1890s India bet three years of taxes on a cricket match against the British. None of them have played cricket.",
+              "answer": "Lagaan",
+              "bonus": "Bowl an imaginary ball and appeal: \"Howzat!\"",
+              "bonusPoints": 50,
+              "funFact": "It was nominated for the Oscar for Best Foreign Language Film."
+            },
+            {
+              "value": 1000,
+              "question": "A big Punjabi wedding in Delhi, a stressed-out dad, marigolds everywhere, and rain. Won the top prize at Venice.",
+              "answer": "Monsoon Wedding",
+              "bonus": "Do a 5-second wedding dance in the rain",
+              "bonusPoints": 50,
+              "funFact": "Director Mira Nair won the Golden Lion in 2001."
+            }
+          ]
+        },
+        {
+          "name": "Real or Made Up? (Movies)",
+          "note": "A movie \"fact\". Answer \"real\" or \"made up\" 🤔",
+          "questions": [
+            {
+              "value": 200,
+              "question": "Real or made up: The movie Titanic is longer than the time the real ship took to sink.",
+              "answer": "Real",
+              "bonus": "Hum the flute part of the Titanic song for 5 seconds",
+              "bonusPoints": 50,
+              "funFact": "The film runs about 3 hours 14 minutes; the ship sank in about 2 hours 40."
+            },
+            {
+              "value": 400,
+              "question": "Real or made up: Darth Vader never actually says \"Luke, I am your father.\"",
+              "answer": "Real (he says \"No, I am your father.\")",
+              "bonus": "Do Darth Vader breathing for 5 seconds",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "Real or made up: Some of the velociraptor sounds in Jurassic Park were recorded from tortoises.",
+              "answer": "Real",
+              "bonus": "Make your best velociraptor noise",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "Real or made up: Sean Connery was offered the role of Gandalf and turned it down.",
+              "answer": "Real",
+              "bonus": "Say \"Bond… James Bond\" with a Scottish accent",
+              "bonusPoints": 50,
+              "verify": true
+            },
+            {
+              "value": 1000,
+              "question": "Real or made up: An Indian film from 1932 has more than 70 songs in it.",
+              "answer": "Real (Indrasabha)",
+              "bonus": "Sing just 2 words of any song, as dramatically as possible",
+              "bonusPoints": 50,
+              "verify": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sparkle": {
+    "draw": {
+      "easy": [
+        "TV remote",
+        "Popcorn",
+        "Sofa",
+        "Movie ticket",
+        "Clapperboard",
+        "3D glasses",
+        "Robot",
+        "Superhero cape"
+      ],
+      "medium": [
+        "Red carpet",
+        "Haunted house",
+        "Spaceship",
+        "Treasure map",
+        "Talking dog",
+        "Zombie",
+        "Award trophy",
+        "Cinema queue"
+      ],
+      "tricky": [
+        "Spoiler alert",
+        "Binge-watching",
+        "Cliffhanger",
+        "Skip intro",
+        "Buffering",
+        "Plot twist",
+        "Remote lost in the sofa",
+        "Falling asleep during a movie"
+      ]
+    },
+    "charades": [
+      "Jurassic Park",
+      "Frozen",
+      "Home Alone",
+      "The Lion King",
+      "Finding Nemo",
+      "Harry Potter",
+      "Spider-Man",
+      "Friends",
+      "Squid Game",
+      "3 Idiots",
+      "Jaws",
+      "Avatar"
+    ],
+    "mimic": [
+      "Read the weather like a soap-opera villain",
+      "Narrate making toast like a movie-trailer voice",
+      "Host a cooking show like a horror-movie host",
+      "Judge someone's dance moves like a reality-show judge",
+      "Describe your morning like a nature documentary",
+      "Announce dinner is ready like a superhero",
+      "Give a team pep talk like a sports-movie coach",
+      "Complain about a cold pizza like an award-winning dramatic actor"
+    ]
+  }
+}

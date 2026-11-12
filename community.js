@@ -81,6 +81,32 @@ function pruneLimits(now = Date.now()) {
 
 const fail = (error) => ({ ok: false, error });
 
+// Saves a validated pack for review (status pending), one row per category. Returns its id.
+// No checks here: submitPack (and the seed script) do those first.
+async function savePending(pack, { hash = contentHash(pack), shareCodeId, madeBy = null, kidFriendly = !!pack.kidFriendly, tagIds = [] }) {
+  return db.transaction(async (c) => {
+    const { rows } = await c.query(
+      `INSERT INTO packs (name, emoji, made_by, kid_friendly, suggested_tag, board_names, teams, sparkle, content_hash, share_code_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [pack.name, pack.emoji || '', madeBy, kidFriendly, pack.suggestedTag || null,
+        JSON.stringify(pack.boards.map((b) => b.name)), pack.teams ? JSON.stringify(pack.teams) : null,
+        pack.sparkle ? JSON.stringify(pack.sparkle) : null, hash, shareCodeId],
+    );
+    const id = rows[0].id;
+    for (const [bi, b] of pack.boards.entries()) {
+      for (const [ci, cat] of b.categories.entries()) {
+        await c.query(
+          'INSERT INTO categories (pack_id, board_index, position, name, description, is_default, questions) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [id, bi, ci, cat.name, cat.note || null, cat.default ?? true, JSON.stringify(cat.questions)],
+        );
+      }
+    }
+    for (const tagId of tagIds) await c.query('INSERT INTO pack_tags (pack_id, tag_id) VALUES ($1, $2)', [id, tagId]);
+    await c.query('UPDATE share_codes SET uses = uses + 1 WHERE id = $1', [shareCodeId]);
+    return id;
+  });
+}
+
 // Submits a checked pack for review. Pending boards are never shown to the public.
 // input: { pack, shareCode, madeBy, tags: [tag names], kidFriendly }
 async function submitPack(input, { ip = 'unknown', now = Date.now() } = {}) {
@@ -124,26 +150,7 @@ async function submitPack(input, { ip = 'unknown', now = Date.now() } = {}) {
     if (dup.rowCount) return fail('This board has already been shared.');
 
     // 4. Save as pending: one row per category.
-    await db.transaction(async (c) => {
-      const { rows } = await c.query(
-        `INSERT INTO packs (name, emoji, made_by, kid_friendly, suggested_tag, board_names, teams, sparkle, content_hash, share_code_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-        [pack.name, pack.emoji || '', who.value, kidFriendly ?? !!pack.kidFriendly, pack.suggestedTag || null,
-          JSON.stringify(pack.boards.map((b) => b.name)), pack.teams ? JSON.stringify(pack.teams) : null,
-          pack.sparkle ? JSON.stringify(pack.sparkle) : null, hash, code.id],
-      );
-      const id = rows[0].id;
-      for (const [bi, b] of pack.boards.entries()) {
-        for (const [ci, cat] of b.categories.entries()) {
-          await c.query(
-            'INSERT INTO categories (pack_id, board_index, position, name, description, is_default, questions) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [id, bi, ci, cat.name, cat.note || null, cat.default ?? true, JSON.stringify(cat.questions)],
-          );
-        }
-      }
-      for (const tagId of tagIds) await c.query('INSERT INTO pack_tags (pack_id, tag_id) VALUES ($1, $2)', [id, tagId]);
-      await c.query('UPDATE share_codes SET uses = uses + 1 WHERE id = $1', [code.id]);
-    });
+    await savePending(pack, { hash, shareCodeId: code.id, madeBy: who.value, kidFriendly: kidFriendly ?? !!pack.kidFriendly, tagIds });
     hit(dayKey, now);
     return { ok: true, message: 'Thanks! It\'ll appear in Community once it\'s approved.' };
   } catch (err) {
@@ -229,5 +236,5 @@ async function countPlay(id) {
 module.exports = {
   PAGE_SIZE, isUuid, publicTags, listBoards, randomBoard, loadPack, countPlay,
   PER_CODE_PER_DAY, PER_IP_PER_DAY, MAX_PENDING, MADE_BY_MAX,
-  newShareCode, createShareCode, findShareCode, hashCode, normCode, contentHash, cleanMadeBy, submitPack, pruneLimits,
+  newShareCode, createShareCode, findShareCode, hashCode, normCode, contentHash, cleanMadeBy, submitPack, savePending, pruneLimits,
 };
