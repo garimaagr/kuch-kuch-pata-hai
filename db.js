@@ -41,6 +41,7 @@ function sslFor(url) {
 
 let pool = null;
 let ready = false;
+let tagCache = []; // [{ id, slug, name, emoji }], kept in memory: the prompt and pack checks need it often
 
 // Connects, creates the tables if needed and adds the starting tags once.
 // Returns true when the community features can be used. Never throws.
@@ -73,6 +74,7 @@ async function init({ url = process.env.DATABASE_URL || '', schema = '', log = c
       client.release();
     }
     ready = true;
+    await refreshTags();
     return true;
   } catch (err) {
     // Only the error code/message: never the connection string.
@@ -118,6 +120,7 @@ async function transaction(fn) {
 
 async function close() {
   ready = false;
+  tagCache = [];
   const p = pool;
   pool = null;
   if (p) await p.end().catch(() => {});
@@ -125,4 +128,17 @@ async function close() {
 
 const enabled = () => ready;
 
-module.exports = { init, query, transaction, close, enabled, slugify, sslFor, STARTING_TAGS };
+// Reloads the tag list (after the admin changes tags). On a database error the old list stays.
+async function refreshTags() {
+  if (!ready) return (tagCache = []);
+  try {
+    tagCache = (await pool.query('SELECT id, slug, name, emoji FROM tags ORDER BY lower(name)')).rows;
+  } catch (err) {
+    console.error(`Couldn't load the tags (${err.code || err.message}).`);
+  }
+  return tagCache;
+}
+const tags = () => (ready ? tagCache : []);
+const tagNames = () => tags().map((t) => t.name);
+
+module.exports = { init, query, transaction, close, enabled, refreshTags, tags, tagNames, slugify, sslFor, STARTING_TAGS };

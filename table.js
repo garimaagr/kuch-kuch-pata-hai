@@ -5,6 +5,9 @@
 //   Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify,How to play
 //   Pack,90s Cartoons,📼                          <- optional: pack name and emoji
 //   Team,Team Saturday Morning                    <- optional: a team name (up to 4 rows)
+//   Tags,Cartoons & Kids,TV                       <- optional: community tags (1–3)
+//   Suggested tag,Saturday Mornings               <- optional: a new tag idea
+//   Kid friendly,yes                              <- optional: yes or no
 //   Theme Tunes,Explained Badly,100,…,…,…,,,      <- a question (Board = the board's name)
 //   Sparkle,Draw easy,,Skateboard                 <- a Sparkle card (item in the Question column)
 
@@ -91,6 +94,21 @@ function parseTable(text, { fallbackName = 'My pack' } = {}) {
       r.slice(1).map(cellText).filter(Boolean).forEach((t) => (pack.teams ||= []).push(t));
       return;
     }
+    if (norm(board) === 'tags' || norm(board) === 'tag') {
+      r.slice(1).map(cellText).filter(Boolean).forEach((t) => (pack.tags ||= []).push(t));
+      return;
+    }
+    if (norm(board) === 'suggestedtag') {
+      const t = r.slice(1).map(cellText).find(Boolean);
+      if (t) pack.suggestedTag = t;
+      return;
+    }
+    if (norm(board) === 'kidfriendly') {
+      const v = r.slice(1).map(cellText).find(Boolean) || '';
+      if (/^(y|yes|true|1|✓|✔)$/i.test(v)) pack.kidFriendly = true;
+      else if (/^(n|no|false|0)$/i.test(v)) pack.kidFriendly = false;
+      return;
+    }
     if (norm(board) === 'sparkle') {
       const where = SPARKLE_LISTS[norm(get(r, 'category'))];
       const item = get(r, 'question');
@@ -161,6 +179,9 @@ function packToTable(pack) {
   const rows = [['Board', 'Category', 'Points', 'Question', 'Answer', 'Bonus', 'Fun fact', 'Verify', 'How to play']];
   rows.push(['Pack', pack.name, pack.emoji || '']);
   for (const t of pack.teams || []) rows.push(['Team', t]);
+  if (pack.tags?.length) rows.push(['Tags', ...pack.tags]);
+  if (pack.suggestedTag) rows.push(['Suggested tag', pack.suggestedTag]);
+  if (pack.kidFriendly != null) rows.push(['Kid friendly', pack.kidFriendly ? 'yes' : 'no']);
   for (const b of pack.boards) for (const c of b.categories) c.questions.forEach((q, i) => {
     rows.push([b.name, c.name, q.value, q.question, q.answer, q.bonus || '', q.funFact || '', q.verify ? 'yes' : '', i === 0 ? c.note || '' : '']);
   });

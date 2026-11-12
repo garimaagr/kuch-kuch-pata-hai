@@ -202,3 +202,56 @@ test('team names: optional, up to 4, different, and kept through the table forma
     assert.strictEqual(pack.teams?.length, 4, `${id} has 4 team names`);
   }
 });
+
+// ---- Community tags ----
+const KNOWN = ['Movies', 'TV', 'Cartoons & Kids', 'Desi'];
+
+test('tags: known ones are kept (spelt like the list), unknown ones become the suggested tag', () => {
+  const p = { ...goodPack(), tags: ['movies', 'Saturday Mornings', 'cartoons and kids', 'Anime', 'MOVIES'], kidFriendly: true };
+  const res = validatePack(p, { knownTags: KNOWN });
+  assert.ok(res.ok, res.errors?.join('\n'));
+  assert.deepStrictEqual(res.pack.tags, ['Movies', 'Cartoons & Kids']);
+  assert.strictEqual(res.pack.suggestedTag, 'Saturday Mornings', 'only the first unknown tag is kept');
+  assert.strictEqual(res.pack.kidFriendly, true);
+});
+
+test('tags: at most 3; Claude\'s own suggestedTag wins; a "suggested" tag that exists is just used', () => {
+  let res = validatePack({ ...goodPack(), tags: ['TV', 'Movies', 'Desi', 'Cartoons & Kids'], suggestedTag: 'A very long suggested tag name' }, { knownTags: KNOWN });
+  assert.deepStrictEqual(res.pack.tags, ['TV', 'Movies', 'Desi']);
+  assert.strictEqual(res.pack.suggestedTag, 'A very long suggeste', 'cut to 20 characters');
+  res = validatePack({ ...goodPack(), tags: ['Nope'], suggestedTag: 'tv' }, { knownTags: KNOWN });
+  assert.deepStrictEqual(res.pack.tags, ['TV']);
+  assert.strictEqual(res.pack.suggestedTag, undefined);
+});
+
+test('tags: optional, and wrong types are clear errors', () => {
+  const plain = validatePack(goodPack(), { knownTags: KNOWN });
+  assert.ok(plain.ok);
+  assert.ok(!('tags' in plain.pack) && !('suggestedTag' in plain.pack) && !('kidFriendly' in plain.pack));
+  assert.match(firstError(validatePack({ ...goodPack(), tags: 'Movies' })), /"tags" must be a list/);
+  assert.match(firstError(validatePack({ ...goodPack(), kidFriendly: 'yes' })), /kidFriendly/);
+  assert.match(firstError(validatePack({ ...goodPack(), suggestedTag: 5 })), /suggestedTag/);
+  // Empty suggestedTag (as in the prompt's example) is fine.
+  assert.ok(validatePack({ ...goodPack(), tags: [], suggestedTag: '', kidFriendly: false }, { knownTags: KNOWN }).ok);
+});
+
+test('tags: no tag list (no database) keeps them as given, so playing never fails', () => {
+  const res = validatePack({ ...goodPack(), tags: ['<b>Anything</b>', 'TV'] });
+  assert.ok(res.ok);
+  assert.deepStrictEqual(res.pack.tags, ['<b>Anything</b>', 'TV']);
+});
+
+test('tags in the table format: read from Tags / Suggested tag / Kid friendly rows, and written back', () => {
+  const header = 'Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify,How to play';
+  const rows = [header, 'Pack,Toons,📺', 'Tags,cartoons & kids,Saturday Mornings', 'Suggested tag,', 'Kid friendly,yes'];
+  for (let c = 1; c <= 5; c++) for (const v of [100, 200, 300, 400, 500]) rows.push(`Toons,Cat ${c},${v},Q${c}-${v}?,A,,,,`);
+  const res = checkUploadedText(rows.join('\n'), { knownTags: KNOWN });
+  assert.ok(res.ok, res.errors?.join('\n'));
+  assert.deepStrictEqual(res.pack.tags, ['Cartoons & Kids']);
+  assert.strictEqual(res.pack.suggestedTag, 'Saturday Mornings');
+  assert.strictEqual(res.pack.kidFriendly, true);
+  assert.deepStrictEqual([res.preview.tags, res.preview.suggestedTag, res.preview.kidFriendly], [['Cartoons & Kids'], 'Saturday Mornings', true]);
+  assert.match(res.csv, /\r\nTags,Cartoons & Kids\r\nSuggested tag,Saturday Mornings\r\nKid friendly,yes\r\n/);
+  const again = checkUploadedText(res.csv, { knownTags: KNOWN });
+  assert.deepStrictEqual([again.pack.tags, again.pack.suggestedTag, again.pack.kidFriendly], [['Cartoons & Kids'], 'Saturday Mornings', true]);
+});

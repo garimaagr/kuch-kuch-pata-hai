@@ -70,3 +70,23 @@ test('tables are created, starting tags added once, and setup can run again', { 
     await admin.end();
   }
 });
+
+test('the tag list is loaded for the prompt and pack checks', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async () => {
+  const schema = `t_${crypto.randomBytes(6).toString('hex')}`;
+  const admin = new Pool({ connectionString: URL, ssl: db.sslFor(URL) });
+  await admin.query(`CREATE SCHEMA ${schema}`);
+  try {
+    await db.init({ url: URL, schema, log: quiet });
+    assert.strictEqual(db.tagNames().length, 12);
+    assert.ok(db.tagNames().includes('Cartoons & Kids'));
+    await db.query('INSERT INTO tags (slug, name, emoji) VALUES ($1, $2, $3)', ['anime', 'Anime', '🍥']);
+    assert.ok(!db.tagNames().includes('Anime'), 'cached until refreshed');
+    await db.refreshTags();
+    assert.ok(db.tagNames().includes('Anime'));
+  } finally {
+    await db.close();
+    assert.deepStrictEqual(db.tagNames(), [], 'no database, no tags');
+    await admin.query(`DROP SCHEMA ${schema} CASCADE`);
+    await admin.end();
+  }
+});

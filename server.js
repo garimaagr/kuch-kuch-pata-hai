@@ -436,6 +436,10 @@ io.on('connection', (socket) => {
   // The theme cards for the setup screen.
   on('host:packs', (cb) => reply(cb, packSummaries()));
 
+  // The community tags for the "Make your own" prompt. Empty when there's no database,
+  // and then the prompt doesn't mention tags at all.
+  on('host:tags', (cb) => reply(cb, { tags: db.tagNames() }));
+
   // "Make your own": checks a pasted pack and sends back the cleaned pack plus a preview.
   // Changes nothing on the server (the PIN is asked at Start). Counted per game (when the host has one)
   // or per network, and only when hosted.
@@ -446,7 +450,10 @@ io.on('connection', (socket) => {
       return reply(cb, { ok: false, errors: ['Too many pack checks. Please wait 10 minutes and try again.'] });
     }
     if (typeof text !== 'string') return reply(cb, { ok: false, errors: ['Paste the pack first.'] });
-    reply(cb, checkUploadedText(text, { fallbackName: typeof name === 'string' ? name : '' }));
+    reply(cb, checkUploadedText(text, {
+      fallbackName: typeof name === 'string' ? name : '',
+      knownTags: db.enabled() ? db.tagNames() : null,
+    }));
   });
 
   on('host:new', async (opts, cb) => {

@@ -114,6 +114,10 @@ function openSetup() {
     if (setup.packId !== 'custom' && !packOf(setup.packId)) setup.packId = packs.find((p) => !p.missing)?.id || 'desi';
     render();
   });
+  socket.emit('host:tags', (res) => {
+    communityTags = Array.isArray(res?.tags) ? res.tags.filter((t) => typeof t === 'string') : [];
+    render();
+  });
   render();
 }
 
@@ -219,6 +223,7 @@ let mo = (() => {
   try { return { ...MO_DEFAULTS, ...JSON.parse(load('fbMakeOwn') || '{}') }; } catch { return { ...MO_DEFAULTS }; }
 })();
 const saveMo = () => save('fbMakeOwn', JSON.stringify(mo));
+let communityTags = []; // tag names from the server; empty when there's no database (no tags in the prompt)
 let custom = null; // { pack, preview, csv } after a pack passes the server's check; lives only in this page
 let moErrors = null; // problems from the last check
 
@@ -236,6 +241,19 @@ function customSummary() {
     boards: p.boards.map((b) => ({ name: b.name, categories: b.categories.map((name) => ({ name, default: true })) })) };
 }
 
+// Community tags: only when the server has a database (otherwise sharing is off and tags are pointless).
+function tagRules() {
+  if (!communityTags.length) return [];
+  const table = mo.format === 'table';
+  return [
+    '',
+    'Tags:',
+    `- Pick 1–3 tags from this list for the pack: ${communityTags.join(', ')}.`,
+    `- If none fit well, also suggest one new tag in ${table ? 'the Suggested tag row' : '"suggestedTag"'} (max 20 characters).`,
+    `- Set ${table ? 'Kid friendly to yes' : '"kidFriendly": true'} only if every question, bonus and sparkle card suits children.`,
+  ];
+}
+
 function makePrompt() {
   const topic = mo.topic.trim() || '(your topic)';
   const sparkleRule = mo.sparkle
@@ -247,6 +265,7 @@ function makePrompt() {
     'Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify,How to play',
     '- First row after the header: Pack,<short pack name>,<one emoji>',
     '- Then 4 team rows: Team,<team name> (one per row).',
+    communityTags.length ? '- Then: Tags,<tag>,<tag> (1–3 tags, one per cell); Suggested tag,<new tag> (only if none fit well); Kid friendly,<yes or no>.' : null,
     '- Then one row per question. Board is the board\'s name (the same on every row of that board). Points are that board\'s values.',
     '- Leave Fun fact empty when there isn\'t one. Verify is "yes" or empty. Fill How to play on the first row of each category only.',
     '- Put a cell in double quotes if it contains a comma or a quote, and write any quote inside it as "".',
@@ -254,7 +273,8 @@ function makePrompt() {
     '- If you run out of space, stop at the end of a row. When I say "continue", carry on from the next row.',
   ] : [
     'Reply with ONLY one JSON object in one code block, in exactly this format:',
-    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","teams":["Team ...","Team ...","Team ...","Team ..."],"boards":[{"name":"<board name>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
+    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","teams":["Team ...","Team ...","Team ...","Team ..."],' +
+      (communityTags.length ? '"tags":["..."],"suggestedTag":"","kidFriendly":false,' : '') + '"boards":[{"name":"<board name>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
   ];
   return [
     `Make a trivia pack for a party buzzer game played by ${(REGIONS[mo.region] || REGIONS.mixed)[1]}.`,
@@ -284,6 +304,7 @@ function makePrompt() {
     '- Plain text only: no HTML, no links, no images, no song lyrics beyond 2–3 words.',
     '- Max lengths: question 300, answer 100, bonus 150, funFact 200 characters.',
     mo.format === 'table' && mo.sparkle ? '- Also include Sparkle cards: 6 easy, 6 medium, 6 tricky things to draw on this topic; 10 things to act out (Charades); 8 "do X like Y" prompts (Mimic). Light, kind, party-safe.' : sparkleRule,
+    ...tagRules(),
     '',
     'Before replying, reread every category name and rename any that would confuse a guest or sound unnatural.',
     '',

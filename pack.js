@@ -12,6 +12,9 @@ const BOARD_VALUES = [
   [200, 400, 600, 800, 1000], // Board 2 (double)
 ];
 const DRAW_LEVELS = ['easy', 'medium', 'tricky'];
+const MAX_TAGS = 3;
+const TAG_MAX = 24; // a tag's name
+const SUGGESTED_TAG_MAX = 20;
 
 // Uploaded packs get the strict limits. Built-in packs (written by us) may be a little longer,
 // e.g. the wordy Professor Pyarelal questions, and may have up to 8 categories per board.
@@ -55,8 +58,9 @@ function looksCutOff(s) {
 }
 
 // Returns { ok: true, pack } with a cleaned copy, or { ok: false, errors: [...] }.
-// options: { kind: 'upload' | 'builtin', allowNoBoards: false }
-function validatePack(input, { kind = 'upload', allowNoBoards = false } = {}) {
+// options: { kind: 'upload' | 'builtin', allowNoBoards: false, knownTags: null }
+// knownTags: the community tag names (from the database). Tags not on it become the suggested tag.
+function validatePack(input, { kind = 'upload', allowNoBoards = false, knownTags = null } = {}) {
   const L = LIMITS[kind];
   const errors = [];
   const err = (msg) => { if (errors.length < 20) errors.push(msg); };
@@ -81,7 +85,7 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false } = {}) {
   };
 
   if (!isObj(input)) return { ok: false, errors: ['A pack must be one JSON object.'] };
-  onlyKeys(input, ['format', 'name', 'emoji', 'teams', 'boards', 'sparkle'], 'The pack');
+  onlyKeys(input, ['format', 'name', 'emoji', 'teams', 'boards', 'sparkle', 'tags', 'suggestedTag', 'kidFriendly'], 'The pack');
   if (input.format !== FORMAT) err(`"format" must be "${FORMAT}".`);
   const pack = { format: FORMAT, name: str(input.name, L.name, 'The pack name'), emoji: undefined, boards: [] };
   if (input.emoji != null) {
@@ -100,6 +104,10 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false } = {}) {
       if (names.length) pack.teams = names;
     }
   }
+
+  // ---- Community tags (optional): only used when sharing; playing ignores them ----
+  Object.assign(pack, packTags(input, knownTags, err));
+  pack.kidFriendly = bool(input.kidFriendly, '"kidFriendly"');
 
   // ---- Boards ----
   const boards = input.boards ?? [];
@@ -188,6 +196,35 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false } = {}) {
   return errors.length ? { ok: false, errors } : { ok: true, pack: strip(pack) };
 }
 
+// "tags", "suggestedTag": Claude picks 1–3 tags from the list it was given. A tag that isn't on the
+// list doesn't fail the pack: it becomes the suggested tag (only the first one is kept) for the
+// admin to decide on. Known tags are matched ignoring case and spelt like the list.
+function packTags(input, knownTags, err) {
+  const out = {};
+  const clean = (t, max) => (typeof t === 'string' ? cleanText(t, max) : '');
+  if (input.tags != null && !Array.isArray(input.tags)) err('"tags" must be a list of tag names.');
+  if (input.suggestedTag != null && typeof input.suggestedTag !== 'string') err('"suggestedTag" must be text.');
+  const given = Array.isArray(input.tags) ? input.tags.slice(0, 20).map((t) => clean(t, TAG_MAX)).filter(Boolean) : [];
+  const key = (t) => t.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
+  const byKey = new Map((knownTags || []).map((t) => [key(t), t]));
+  const tags = [];
+  const unknown = [];
+  for (const t of given) {
+    const known = knownTags ? byKey.get(key(t)) : t; // no tag list (no database): keep them as given
+    if (!known) unknown.push(t);
+    else if (!tags.includes(known)) tags.push(known);
+  }
+  let suggested = clean(input.suggestedTag, Infinity) || unknown[0] || '';
+  const suggestedKnown = knownTags && byKey.get(key(suggested));
+  if (suggestedKnown) { // Claude "suggested" a tag that already exists: just use it
+    if (!tags.includes(suggestedKnown)) tags.push(suggestedKnown);
+    suggested = '';
+  }
+  if (tags.length) out.tags = tags.slice(0, MAX_TAGS);
+  if (suggested) out.suggestedTag = cleanText(suggested, SUGGESTED_TAG_MAX);
+  return out;
+}
+
 // Drops undefined fields so the cleaned pack only has what was given.
 function strip(obj) {
   for (const k of Object.keys(obj)) if (obj[k] === undefined) delete obj[k];
@@ -214,20 +251,23 @@ function packPreview(pack) {
     boards: pack.boards.map((b) => ({ name: b.name, categories: b.categories.map((c) => c.name) })),
     questions: pack.boards.reduce((n, b) => n + b.categories.length * 5, 0),
     hasSparkle: !!pack.sparkle,
+    tags: pack.tags || [],
+    suggestedTag: pack.suggestedTag || '',
+    kidFriendly: !!pack.kidFriendly,
     checks,
   };
 }
 
 // Pasted text or file contents (JSON, or a CSV / spreadsheet table) -> { ok, pack, preview } or
 // { ok: false, errors }. Always the strict upload rules.
-function checkUploadedText(text, { fallbackName } = {}) {
+function checkUploadedText(text, { fallbackName, knownTags = null } = {}) {
   const s = String(text ?? '');
   if (Buffer.byteLength(s, 'utf8') > MAX_PACK_BYTES) return { ok: false, errors: ['The pack is too big (over 300 KB).'] };
   const parsed = looksLikeTable(s) ? parseTable(s, { fallbackName: cleanText(fallbackName || '', 40) || 'My pack' }) : parsePackText(s);
   if (!parsed.ok) return parsed;
-  const res = validatePack(parsed.value, { kind: 'upload' });
+  const res = validatePack(parsed.value, { kind: 'upload', knownTags });
   if (!res.ok) return res;
   return { ok: true, pack: res.pack, preview: packPreview(res.pack), csv: packToTable(res.pack) };
 }
 
-module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, packPreview, checkUploadedText };
+module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_TAGS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, packPreview, checkUploadedText };
