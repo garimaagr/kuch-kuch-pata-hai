@@ -95,7 +95,7 @@ function catPicks(pack, bi) {
 const boardsInPlay = (pack) => (pack.boards.length < 2 ? [0] : setup.boards === '1' ? [0] : setup.boards === '2' ? [1] : [0, 1]);
 
 function openSetup() {
-  if (state && !confirm('Start a new game? The current game will be left behind.')) return;
+  if (state && !confirm('Start a new game? The current game ends when you start the new one, and its players are told to join the new game.')) return;
   setupOpen = true;
   show('pinBox', false);
   socket.emit('host:packs', (list) => {
@@ -113,6 +113,7 @@ function startNewGame() {
   socket.emit('host:new', {
     pin: $('pin').value, ...which, boards: setup.boards, sparkleEvery: setup.sparkleEvery,
     modes: setup.modes, bonuses: setup.bonuses, double: setup.double,
+    replaces: code && secret ? { code, secret } : undefined, // the server ends the previous game
   }, gotRoom);
 }
 

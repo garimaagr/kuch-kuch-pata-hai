@@ -97,6 +97,7 @@ Hosted on Render, the game has a public https link, so phones can join on any ne
 - **A phone dropped off:** it reconnects by itself and keeps the same name and team. Refreshing the page is also fine.
 - **Phones can't open the link:** check the checklist above. Then make sure the IP in the QR link matches the one printed in the terminal.
 - **"Port 3000 is already in use":** another program is using that port. Run `PORT=3100 npm start` instead.
+- **Starting a new game ends the old one.** When you click **New game** and then **▶ Start**, the previous game closes: its phones see "This game has ended", and its old link says "Game not found". (**← Back to the current game** before Start keeps it going.)
 - **The server was restarted:** the game lives in memory, so it's gone. Click **New game**, have everyone rejoin, and fix the scores with **− / +**.
 
 ## Editing questions and dares (packs)

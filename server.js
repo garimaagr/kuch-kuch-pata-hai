@@ -131,14 +131,18 @@ function hostState(room) {
   };
 }
 
+// Ends a game: tells its phones (and any other host tab) and forgets it, so old links stop working.
+function closeRoom(code, message) {
+  if (message) io.to(code).emit('ended', message);
+  io.in(code).disconnectSockets(true);
+  io.in(code + ':host').disconnectSockets(true);
+  rooms.delete(code);
+}
+
 // Deletes rooms nobody has used for a while, so memory stays small.
 function cleanupRooms(now = Date.now()) {
   for (const [code, room] of rooms) {
-    if (now - room.lastActive > ROOM_IDLE_MS) {
-      io.in(code).disconnectSockets(true);
-      io.in(code + ':host').disconnectSockets(true);
-      rooms.delete(code);
-    }
+    if (now - room.lastActive > ROOM_IDLE_MS) closeRoom(code);
   }
   roomCreation.prune(now);
   packChecks.prune(now);
@@ -443,6 +447,11 @@ io.on('connection', (socket) => {
     };
     room.used = room.usedBy[0];
     room.qr = await QRCode.toDataURL(joinUrl, { margin: 1, width: 320 });
+    // The host's previous game (if it proves it ran it) ends now, so its old link can't be rejoined by mistake.
+    const old = rooms.get(String(opts?.replaces?.code || '').toUpperCase());
+    const closeOld = old && sameSecret(opts.replaces.secret, old.hostSecret);
+    if (closeOld) socket.leave(old.code + ':host'); // this socket is starting the new game; don't disconnect it
+    if (closeOld) closeRoom(old.code, 'This game has ended. The host started a new one: scan the new QR code to join.');
     rooms.set(code, room);
     socket.data = { role: 'host', code };
     socket.join(code + ':host');

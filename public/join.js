@@ -19,6 +19,7 @@ let secret = null; // the movie title, sent only to the performer's phone
 let sparkleEndsAt = null;
 const SECRET_MODES = ['draw', 'charades'];
 let lastMsg = null;
+let ended = null; // set when the host ends this game
 
 function join() {
   socket.emit('player:join', { code, playerId, name }, (res) => {
@@ -32,13 +33,20 @@ function join() {
 socket.on('connect', () => { if (name) join(); else render(); });
 // Socket.IO keeps retrying on its own. Show it, and retry right away when a sleeping phone wakes up.
 socket.on('disconnect', () => {
+  if (ended) return;
   $('top').textContent = '📶 Reconnecting…';
   $('buzz').disabled = true;
 });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !socket.connected) socket.connect();
+  if (document.visibilityState === 'visible' && !socket.connected && !ended) socket.connect();
 });
 socket.on('secret', (title) => { secret = title; });
+// The host started a new game: this one is gone. Show why, and don't keep trying to rejoin it.
+socket.on('ended', (message) => {
+  ended = String(message || 'This game has ended.');
+  socket.io.reconnection(false);
+  render();
+});
 socket.on('state', (s) => {
   state = s;
   sparkleEndsAt = s.sparkle?.running ? Date.now() + s.sparkle.remaining : null;
@@ -73,6 +81,13 @@ function render() {
   const me = state?.players.find((p) => p.id === playerId);
   const team = state?.teams.find((t) => t.id === me?.teamId);
 
+  if (ended) {
+    show('nameForm', false); show('sparkle', false); show('game', false); show('message', true);
+    $('message').textContent = ended;
+    $('top').textContent = 'BuzzIn';
+    $('top').style.setProperty('--c', '');
+    return;
+  }
   show('nameForm', !name || (error && !joined));
   if (!name) $('nameInput').value = '';
 
