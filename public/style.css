@@ -442,3 +442,60 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 #buzz:disabled { background: var(--surface-2); color: #6f6894; box-shadow: 0 8px 0 #120d26; }
 .logo .logo-word { color: var(--text); }
 .logo .logo-word span { color: var(--accent); }
+
+/* ---- Header: join info, ⋯ menu ---- */
+.host header { gap: 1rem; }
+.join-info { flex: 1; text-align: center; color: var(--muted); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 11rem; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; padding: 0.3rem; z-index: 70; box-shadow: 0 12px 30px #0008; }
+.menu-item { display: block; width: 100%; text-align: left; background: transparent; color: var(--text); font-weight: 600; padding: 0.55em 0.8em; border-radius: 8px; }
+.menu-item:hover { background: var(--surface-2); filter: none; }
+button.attention { border-color: var(--accent); color: var(--accent); }
+
+/* ---- How to play ---- */
+.howto { position: fixed; inset: 0; z-index: 80; background: rgba(8, 5, 18, 0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+.howto-card { background: var(--surface); border: 1px solid var(--line-2); border-radius: 18px; padding: 1.4rem 1.8rem; width: min(760px, 100%); max-height: 100%; overflow: auto; }
+.howto-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.4rem; }
+.howto-head h2 { margin: 0; }
+.howto-list { list-style: none; padding: 0; margin: 0; }
+.howto-list li { display: flex; gap: 0.9rem; align-items: baseline; padding: 0.6rem 0; border-top: 1px solid var(--line); line-height: 1.4; }
+.howto-list li:first-child { border-top: 0; }
+.howto-list li > span { font-size: 1.4rem; width: 2rem; text-align: center; flex: none; }
+.howto-list b { display: block; color: var(--accent); }
+/* Big version for the TV */
+.howto.tv { padding: 0; background: var(--bg); }
+.howto.tv .howto-card { width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; padding: 3vh 5vw; display: flex; flex-direction: column; }
+.howto.tv .howto-head h2 { font-size: clamp(2rem, 5vh, 3.4rem); }
+.howto.tv .howto-list { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }
+.howto.tv .howto-list li { font-size: clamp(1.2rem, 3.3vh, 2.2rem); padding: 1.2vh 0; }
+.howto.tv .howto-list li > span { font-size: 1.4em; width: 2.2em; }
+
+/* ---- Customise hints, first-time explainers ---- */
+.hint { flex-basis: 100%; margin: -0.2rem 0 0 12rem; color: var(--muted); font-size: 0.85rem; }
+@media (max-width: 700px) { .hint { margin-left: 0; } }
+.explain { display: inline-block; margin: 0.5rem 0 0; padding: 0.35rem 0.85rem; border-radius: 10px; background: #2a2210; border: 1px solid #6b5313; color: #ffe08a; font-weight: 600; }
+.explain { display: table; } /* its own line, under the heading */
+
+/* ---- Reveal ---- */
+#reveal { text-align: center; padding-top: 6vh; }
+.reveal-head { font-size: clamp(1.4rem, 3vw, 2.2rem); font-weight: 800; }
+.reveal-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.9rem; margin-top: 2rem; }
+.reveal-answer { font-size: clamp(2.6rem, 7vw, 5.5rem); font-weight: 900; color: #4ade80; line-height: 1.1; margin: 0.4rem 0 1.4rem; letter-spacing: -0.02em; }
+#reveal .qfact { display: inline-block; text-align: left; max-width: 52rem; font-size: 1.3rem; }
+#reveal .row { justify-content: center; margin-top: 1.6rem; }
+#reveal.enter .reveal-answer { animation: zoomIn 0.5s cubic-bezier(.2,1.3,.4,1) both; }
+
+/* ---- Lobby: team picker on waiting players ---- */
+#unassigned .chip select { margin-left: 0.4rem; padding: 0.15em 0.3em; font-size: 0.85rem; }
+
+/* ---- Phone ---- */
+.player .top { padding: 0.7rem 1rem; }
+.top-name { font-size: 1.2rem; font-weight: 800; }
+.top-team { font-size: 0.9rem; font-weight: 600; opacity: 0.9; }
+.top-team:empty { display: none; }
+.joining { color: var(--muted); font-weight: 600; margin-bottom: 0.4rem; }
+.join-info { display: flex; justify-content: center; align-items: baseline; min-width: 0; text-overflow: clip; }
+.join-url { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.join-code { flex: none; white-space: nowrap; }
+.join-code b { color: var(--accent); letter-spacing: 0.08em; }
+.header-actions { flex-wrap: nowrap; }

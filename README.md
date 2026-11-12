@@ -24,19 +24,19 @@ It prints something like:
 ```
 
 1. Open the host page on the laptop and share that window to the TV. Turn the TV or laptop volume up for the buzz, correct and wrong sounds (the 🔊 button at the top mutes them).
-2. Click **New game**, pick a theme card, and click **▶ Start**. Friends scan the QR code (or type the link) and enter their name.
+2. Click **Start a new game** (later: **⋯ → New game** in the top bar), pick a theme card, and click **▶ Start**. Friends scan the QR code (or type the link): the join page says which game they're joining, then they enter their name. **❓ How to play** (on the setup screen and the board) explains the rules in one screen; **📺 Show on TV** makes it big for everyone.
    - **Customise** (optional, remembered for next time): play both boards, Board 1 only or Board 2 only; Sparkle Round off or every 3, 4 or 6 questions; which Sparkle modes; bonuses on or off; the hidden Double on or off; and which 5 categories each board uses.
-3. Click **Make random teams** (2–4 teams). Team names fit the theme (Desi Night: Team Mogambo, Team Basanti…; TV & Movies: Team Popcorn, Team Remote…), and the theme details show them before you start. Use **Reshuffle** or the dropdowns to move people around.
+3. Click **Make random teams** (2–4 teams). Team names fit the theme (Desi Night: Team Mogambo, Team Basanti…; TV & Movies: Team Popcorn, Team Remote…), and the theme details show them before you start. Use **Reshuffle** or the dropdowns to move people around. Players who join after that wait in the lobby: the top bar shows **Lobby / teams (1 waiting)**, and you pick their team there. The board and question screens show the join link and room code in the top bar, and phones show each player's name, team and score.
 4. Click **Go to the board →** and play:
    - Click a tile, read the question, then **Open buzzers**. The **💬 How to play** line under the category says what players should answer (hover a category on the board, or open Customise, to see it before picking). The buzz order shows on screen.
-   - **✅ Correct** adds the points, then shows that team a **bonus challenge**: tap **Bonus done +50** or **Skip bonus**. **❌ Wrong** takes the points away, locks that team out, and passes the turn to the next team in line.
+   - **✓ Correct** and **✕ Wrong** work once someone has buzzed. **Correct** adds the points and shows the answer big on the TV (with any "💡 Did you know?" fun fact), then **Next: bonus →** shows that team a **bonus challenge**: tap **Bonus done +50** or **Skip bonus**. **Wrong** takes the points away, locks that team out, and passes the turn to the next team in line.
    - **😂 +5** buttons (one per team) reward funny wrong answers. Tap as often as you like.
-   - **Show answer** and **Back to board** when you're done. Used tiles go grey.
+   - **Show answer** shows the answer (and fun fact) the same way, then **Back to board →**. **Back to board** on the question skips it without showing the answer. Used tiles go grey.
    - Fix any mistakes with the **− / +** buttons under each team's score.
    - **👁 Hold to peek** shows the answer while you hold it. If the TV mirrors your screen, it shows there too.
    - **Board 2 is worth double** (200–1000). When Board 1 is finished, tap **Play Board 2 (Double!)**. Scores carry over. **Board 2 →** at the top jumps early if you're short on time.
    - **Hidden Double:** one tile per board (never a 100/200) is secretly a Double. It flashes "DOUBLE!" and is worth 2× if right, −2× if wrong.
-   - **Show answer** also shows any "💡 Did you know?" fun fact.
+   - The first Double, bonus and Sparkle Round of a game each get a one-line explainer on screen.
    - **🏁 Finish game** (or **See the winner** when every board is done) shows the winner screen.
 5. **✨ Sparkle Round** starts by itself after every 6 finished questions (answered correctly, or answer shown). You can also open it with the **✨ Sparkle Round** button on the board, or leave it with **Skip Sparkle**.
    - Pick the team, then the mode: 🎨 **Draw**, 🤐 **Dumb Charades** or 🎭 **Mimic**. For Draw, the team also picks a difficulty: 🌶️ Easy (50), 🌶️🌶️ Medium (100) or 🌶️🌶️🌶️ Tricky (200). The team chooses its performer, and you tap their name to draw a card. **Skip card** draws another.

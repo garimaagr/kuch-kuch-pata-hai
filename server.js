@@ -106,6 +106,8 @@ function publicState(room) {
     buzz: room.buzz,
     sparkle: publicSparkle(room),
     double: !!room.current?.double, // phones show "DOUBLE!" while a Double tile is open
+    question: !!room.current, // phones say "Look at the TV" between questions
+    packName: room.packName,
   };
 }
 
@@ -126,6 +128,7 @@ function hostState(room) {
     settings: room.settings,
     current: room.current && { ...room.current, ...room.board[room.current.cat].questions[room.current.idx], category: room.board[room.current.cat].category, note: room.board[room.current.cat].note },
     showAnswer: room.showAnswer,
+    reveal: room.reveal,
     bonus: room.bonus,
     deckLeft: Object.fromEntries(DECK_KEYS.map((k) => [k, room.decks[k].length - room.drawn[k].length])),
   };
@@ -352,11 +355,6 @@ function makeTeams(room, count) {
   room.sparkle = null;
 }
 
-function smallestTeam(room) {
-  const counts = room.teams.map((t) => [...room.players.values()].filter((p) => p.teamId === t.id).length);
-  return room.teams[counts.indexOf(Math.min(...counts))].id;
-}
-
 // ---- Sockets ----
 io.on('connection', (socket) => {
   // Host controls only work on a socket that proved it knows the room's host secret.
@@ -442,7 +440,7 @@ io.on('connection', (socket) => {
       screen: 'lobby', packName: pack.name, packEmoji: pack.emoji || '', teamNames: teamNamesFor(pack), settings: publicSettings,
       boards, boardNames, usedBy: boards.map(() => []), boardNo: 0, doubles: pickDoubles(boards),
       board: boards[0], used: null, current: null, showAnswer: false,
-      finished: 0, sparkleDue: false, bonus: null,
+      finished: 0, sparkleDue: false, reveal: null, bonus: null,
       decks, drawn: Object.fromEntries(DECK_KEYS.map((k) => [k, []])), sparkle: null,
     };
     room.used = room.usedBy[0];
@@ -501,7 +499,7 @@ io.on('connection', (socket) => {
   // ---- Board and scoring ----
   on('host:screen', (screen) => {
     const room = hostRoom();
-    if (!room || !['lobby', 'board', 'sparkle', 'winner'].includes(screen) || room.current || room.bonus) return;
+    if (!room || !['lobby', 'board', 'sparkle', 'winner'].includes(screen) || room.current || room.reveal || room.bonus) return;
     if (screen === 'sparkle' && !room.settings.sparkleEvery) return; // Sparkle is off for this game
     room.screen = screen;
     room.sparkle = screen === 'sparkle' ? newSparkle() : null;
@@ -511,7 +509,7 @@ io.on('connection', (socket) => {
   // Switch boards; scores and each board's used tiles are kept.
   on('host:switchBoard', (n) => {
     const room = hostRoom();
-    if (!room || room.current || room.bonus || !room.boards[n]) return;
+    if (!room || room.current || room.reveal || room.bonus || !room.boards[n]) return;
     room.boardNo = n;
     room.board = room.boards[n];
     room.used = room.usedBy[n];
@@ -520,7 +518,7 @@ io.on('connection', (socket) => {
 
   on('host:pickTile', ({ cat, idx } = {}) => {
     const room = hostRoom();
-    if (!room || room.current || room.bonus || !room.board[cat]?.questions[idx] || room.used.includes(`${cat}-${idx}`)) return;
+    if (!room || room.current || room.reveal || room.bonus || !room.board[cat]?.questions[idx] || room.used.includes(`${cat}-${idx}`)) return;
     // The hidden Double: worth 2x if right, costs 2x if wrong.
     room.current = { cat, idx, double: room.settings.double && room.doubles[room.boardNo] === `${cat}-${idx}` };
     room.showAnswer = false;
@@ -534,10 +532,12 @@ io.on('connection', (socket) => {
     const team = turn && room.teams.find((t) => t.id === turn.teamId);
     if (!team) return;
     const q = currentQuestion(room);
-    team.score += q.value * (room.current.double ? 2 : 1);
+    const points = q.value * (room.current.double ? 2 : 1);
+    team.score += points;
+    // First the answer (and fun fact) on the TV, then the bonus if there is one.
+    const bonus = q.bonus && room.settings.bonuses ? { teamId: team.id, text: q.bonus, points: Number(q.bonusPoints) || 0 } : null;
+    room.reveal = { answer: q.answer, funFact: q.funFact || null, teamId: team.id, points, bonus };
     finishQuestion(room, true);
-    if (q.bonus && room.settings.bonuses) room.bonus = { teamId: team.id, text: q.bonus, points: Number(q.bonusPoints) || 0 };
-    else goToBoard(room);
     send(room);
   });
 
@@ -553,15 +553,28 @@ io.on('connection', (socket) => {
 
   on('host:showAnswer', () => {
     const room = hostRoom();
-    if (!room?.current) return;
-    room.showAnswer = true;
+    const q = room && currentQuestion(room);
+    if (!q) return;
+    room.reveal = { answer: q.answer, funFact: q.funFact || null, teamId: null, points: 0, bonus: null };
+    finishQuestion(room, true); // a shown answer counts toward the Sparkle Round
+    send(room);
+  });
+
+  // From the reveal screen: on to the bonus, or back to the board.
+  on('host:revealNext', () => {
+    const room = hostRoom();
+    const r = room?.reveal;
+    if (!r) return;
+    room.reveal = null;
+    if (r.bonus) room.bonus = r.bonus;
+    else goToBoard(room);
     send(room);
   });
 
   on('host:backToBoard', () => {
     const room = hostRoom();
     if (!room?.current) return;
-    finishQuestion(room, room.showAnswer); // only counts toward the Sparkle Round if the answer was shown
+    finishQuestion(room, false); // skipped without showing the answer: doesn't count toward the Sparkle Round
     goToBoard(room);
     send(room);
   });
@@ -688,6 +701,11 @@ io.on('connection', (socket) => {
     awardSparkle(room, DRAW_LEVELS[s.level]);
   });
 
+  on('player:peek', (code, cb) => {
+    const room = rooms.get(String(code || '').toUpperCase());
+    reply(cb, room ? { ok: true, packName: room.packName, packEmoji: room.packEmoji } : { ok: false });
+  });
+
   on('player:join', ({ code, playerId, name } = {}, cb) => {
     const room = rooms.get(String(code || '').toUpperCase());
     if (!room) return reply(cb, { ok: false, error: 'Game not found. Ask the host for the new code.' });
@@ -698,7 +716,7 @@ io.on('connection', (socket) => {
     let p = room.players.get(playerId);
     if (!p) {
       if (room.players.size >= MAX_PLAYERS) return reply(cb, { ok: false, error: `This game is full (${MAX_PLAYERS} players).` });
-      p = { id: playerId, name, teamId: room.teams.length ? smallestTeam(room) : null };
+      p = { id: playerId, name, teamId: null }; // the host puts them in a team (Lobby / teams)
       room.players.set(playerId, p);
     }
     p.name = name;

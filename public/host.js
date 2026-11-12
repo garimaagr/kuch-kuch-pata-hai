@@ -34,6 +34,15 @@ let lastSecs = null;
 let lastScreen = null; // so a new screen scrolls to the top (and not on every update)
 const seen = new Set(); // players already shown, so only new ones pop in
 
+// One-line explainers show the first time a Double, a bonus and a Sparkle Round come up in a game.
+// Remembered per game: { code, double: <when>, bonus: <when>, sparkle: <when> }.
+let explained = (() => { try { return JSON.parse(load('fbExplained') || '{}'); } catch { return {}; } })();
+function firstTime(kind, when) {
+  if (explained.code !== state.code) explained = { code: state.code };
+  if (explained[kind] == null) { explained[kind] = when; save('fbExplained', JSON.stringify(explained)); }
+  return explained[kind] === when; // still the first one: keep showing it until it's over
+}
+
 const MODES = {
   draw: { label: '🎨 Draw', doing: 'is drawing…' },
   charades: { label: '🤐 Dumb Charades', doing: 'is acting it out…' },
@@ -95,7 +104,7 @@ function catPicks(pack, bi) {
 const boardsInPlay = (pack) => (pack.boards.length < 2 ? [0] : setup.boards === '1' ? [0] : setup.boards === '2' ? [1] : [0, 1]);
 
 function openSetup() {
-  if (state && !confirm('Start a new game? The current game ends when you start the new one, and its players are told to join the new game.')) return;
+  if (state && !confirm('Start a new game? This ends the current game.')) return;
   setupOpen = true;
   show('pinBox', false);
   socket.emit('host:packs', (list) => {
@@ -174,6 +183,7 @@ function renderSetup() {
     return h('div', { class: 'opt' },
       h('span', { class: 'opt-label' }, `Board ${bi + 1} categories `, h('small', { class: picks.length === 5 ? 'ok' : 'bad' }, `${picks.length} of 5 picked`)),
       h('div', { class: 'seg' }, chips),
+      h('div', { class: 'hint' }, 'ⓘ Pick the 5 categories to play. What each one asks is listed below.'),
       // What each picked category is, so the host knows what they're choosing.
       h('ul', { class: 'cat-help' }, picks.map((ci) => board.categories[ci]).map((c) =>
         h('li', {}, h('b', {}, c.name), c.note ? ` — ${c.note}` : ''))));
@@ -381,7 +391,19 @@ socket.on('flash', ({ teamId, text }) => {
   setTimeout(() => el.remove(), 1300);
 });
 
-$('newGame').onclick = openSetup;
+// ⋯ menu (New game lives here, away from the buttons used during play)
+const setMenu = (open) => { show('menu', open); $('menuBtn').setAttribute('aria-expanded', String(open)); };
+$('menuBtn').onclick = (e) => { e.stopPropagation(); setMenu($('menu').classList.contains('hidden')); };
+document.addEventListener('click', (e) => { if (!e.target.closest('.menu-wrap')) setMenu(false); });
+$('newGame').onclick = () => { setMenu(false); openSetup(); };
+
+// How to play: a one-screen panel; "Show on TV" makes it big
+const setHow = (open, tv = false) => { show('howto', open); $('howto').classList.toggle('tv', tv); $('howTv').textContent = tv ? '↙ Smaller' : '📺 Show on TV'; };
+$('howBtn').onclick = () => setHow(true);
+$('howClose').onclick = () => setHow(false);
+$('howTv').onclick = () => setHow(true, !$('howto').classList.contains('tv'));
+$('howto').onclick = (e) => { if (e.target === $('howto')) setHow(false); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setHow(false); setMenu(false); } });
 $('startGame').onclick = startNewGame;
 $('cancelSetup').onclick = () => { setupOpen = false; render(); };
 $('themes').onclick = (e) => {
@@ -413,9 +435,11 @@ $('switchBoard').onclick = () => {
   if (to === 1 && !state.boardDone && !confirm(`Board 1 isn't finished. Jump to Board 2 anyway? You can come back.`)) return;
   socket.emit('host:switchBoard', to);
 };
-$('teams').onchange = (e) => {
-  if (e.target.dataset.player) socket.emit('host:movePlayer', { playerId: e.target.dataset.player, teamId: Number(e.target.value) });
+const movePlayer = (e) => {
+  if (e.target.dataset.player && e.target.value !== '') socket.emit('host:movePlayer', { playerId: e.target.dataset.player, teamId: Number(e.target.value) });
 };
+$('teams').onchange = movePlayer;
+$('unassigned').onchange = movePlayer;
 $('grid').onclick = (e) => {
   const t = e.target.closest('[data-cat]');
   if (t && !t.disabled) socket.emit('host:pickTile', { cat: Number(t.dataset.cat), idx: Number(t.dataset.idx) });
@@ -431,6 +455,9 @@ $('funnyRow').onclick = (e) => {
   const b = e.target.closest('[data-funny]');
   if (b) socket.emit('host:funny', Number(b.dataset.funny));
 };
+
+// Reveal
+$('revealNext').onclick = emit('host:revealNext');
 
 // Bonus
 $('bonusDone').onclick = emit('host:bonus', true);
@@ -494,18 +521,26 @@ $('scores').onclick = (e) => {
 };
 
 function render() {
-  const screen = setupOpen ? 'setup' : !state ? 'start' : state.current ? 'question' : state.bonus ? 'bonus' : state.screen;
+  const screen = setupOpen ? 'setup' : !state ? 'start' : state.current ? 'question' : state.reveal ? 'reveal' : state.bonus ? 'bonus' : state.screen;
   if (screen !== lastScreen) window.scrollTo(0, 0); // a new screen starts at the top
   lastScreen = screen;
-  for (const s of ['start', 'setup', 'lobby', 'board', 'question', 'bonus', 'sparkle', 'winner']) show(s, s === screen);
+  for (const s of ['start', 'setup', 'lobby', 'board', 'question', 'reveal', 'bonus', 'sparkle', 'winner']) show(s, s === screen);
+  show('howBtn', screen === 'setup' || screen === 'board');
+  show('joinInfo', !!state && (screen === 'board' || screen === 'question'));
+  // The address may shorten to fit; the room code never does.
+  if (state) fill('joinInfo', 'Join:\u00a0', h('span', { class: 'join-url' }, state.joinUrl.replace(/^https?:\/\//, '')), h('span', { class: 'join-code' }, '\u00a0·\u00a0Room\u00a0', h('b', {}, state.code)));
   show('toLobby', screen === 'board');
+  // Late joiners wait in the lobby until the host puts them in a team.
+  const waiting = state ? state.players.filter((p) => p.teamId == null).length : 0;
+  $('toLobby').textContent = waiting && state.teams.length ? `Lobby / teams (${waiting} waiting)` : 'Lobby / teams';
+  $('toLobby').classList.toggle('attention', !!waiting && !!state?.teams.length);
   show('toSparkle', screen === 'board' && !!state?.settings?.sparkleEvery);
   show('finishGame', screen === 'board');
   show('switchBoard', screen === 'board' && state?.boardCount > 1);
   show('cancelSetup', !!state);
   if (state) $('switchBoard').textContent = state.boardNo === 0 ? 'Board 2 →' : '← Board 1';
   if (screen === 'setup') renderSetup();
-  show('scores', ['board', 'question', 'bonus', 'sparkle'].includes(screen));
+  show('scores', ['board', 'question', 'reveal', 'bonus', 'sparkle'].includes(screen));
   if (!state || screen === 'setup') return;
 
   const teamOf = (id) => state.teams.find((t) => t.id === id);
@@ -523,9 +558,14 @@ function render() {
   show('toBoard', hasTeams);
   if (hasTeams) $('teamCount').value = state.teams.length;
 
-  const chip = (p) => h('span', { class: `chip ${p.connected ? '' : 'off'} ${seen.has(p.id) ? '' : 'pop'}` }, p.name);
+  const chip = (p) => h('span', { class: `chip ${p.connected ? '' : 'off'} ${seen.has(p.id) ? '' : 'pop'}` }, p.name,
+    hasTeams ? [' ', h('select', { data: { player: p.id }, title: 'Put in a team' },
+      h('option', { value: '', selected: true }, 'Add to team…'),
+      state.teams.map((t) => h('option', { value: t.id }, t.name)))] : []);
   const unassigned = state.players.filter((p) => p.teamId == null).map(chip);
-  fill('unassigned', unassigned.length ? unassigned : hasTeams ? [] : h('p', { class: 'muted' }, 'Waiting for players to join…'));
+  fill('unassigned', unassigned.length
+    ? [hasTeams ? h('span', { class: 'muted' }, 'Waiting for a team: ') : null, ...unassigned].filter(Boolean)
+    : hasTeams ? [] : h('p', { class: 'muted' }, 'Waiting for players to join…'));
 
   fill('teams', state.teams.map((t) => {
     const items = state.players.filter((p) => p.teamId === t.id).map((p) =>
@@ -566,13 +606,11 @@ function render() {
     $('qText').textContent = q.question;
     $('qText').classList.toggle('long', q.question.length > 160); // wordy questions get smaller text
     $('qText').classList.toggle('xlong', q.question.length > 380); // really wordy ones get smaller still
-    $('qAnswer').textContent = q.answer;
-    show('qAnswer', state.showAnswer);
     show('qDouble', !!q.double);
+    const firstDouble = !!q.double && firstTime('double', `${state.boardNo}-${q.cat}-${q.idx}`);
+    show('qDoubleHelp', firstDouble);
+    $('qDoubleHelp').textContent = `Right = +${q.value * 2}, wrong = −${q.value * 2}`;
     $('qCategory').textContent = `${q.category} — ${q.double ? q.value * 2 : q.value}${q.double ? ' (Double!)' : ''}`;
-    // After the reveal: the fun fact.
-    fill('qFact', q.funFact ? [h('b', {}, '💡 Did you know? '), q.funFact] : []);
-    show('qFact', state.showAnswer && !!q.funFact);
     fill('peekBox', h('b', {}, 'Answer: '), q.answer);
 
     const b = state.buzz;
@@ -591,8 +629,21 @@ function render() {
     fill('order', order.length ? order : b.open ? h('p', { class: 'muted' }, 'Waiting for a buzz…') : []);
   }
 
+  // ---- Reveal ----
+  const r = state.reveal;
+  if (r) {
+    const t = teamOf(r.teamId);
+    fill('revealHead', t ? [h('span', { color: t.color }, t.name), ` got it! +${r.points}`] : 'Nobody got this one');
+    $('revealAnswer').textContent = r.answer;
+    fill('revealFact', r.funFact ? [h('b', {}, '💡 Did you know? '), r.funFact] : []);
+    show('revealFact', !!r.funFact);
+    $('revealNext').textContent = r.bonus ? 'Next: bonus →' : 'Back to board →';
+  }
+
   // ---- Bonus ----
   if (state.bonus) {
+    show('bonusHelp', firstTime('bonus', `${state.boardNo}-${state.used.length}`));
+    $('bonusHelp').textContent = `Bonus: do this and your team gets +${state.bonus.points}. Skipping is fine.`;
     const t = teamOf(state.bonus.teamId);
     fill('bonusFor', '⭐ BONUS for ', h('span', { color: t?.color }, t?.name || '?'), ':');
     $('bonusText').textContent = state.bonus.text;
@@ -602,6 +653,7 @@ function render() {
   // ---- Sparkle Round ----
   const sp = state.sparkle;
   if (screen === 'sparkle' && sp) {
+    show('sparkleHelp', firstTime('sparkle', `${state.boardNo}-${state.used.length}`));
     const team = teamOf(sp.teamId);
     show('spSetup', !sp.hasCard);
     show('spCard', sp.hasCard);
@@ -692,7 +744,7 @@ function effects(screen, oldPts) {
     clearTimeout(sec._t);
     sec._t = setTimeout(() => sec.classList.remove('enter'), 1500);
     if (screen === 'sparkle') { fx.play('sparkle'); fx.confetti(innerWidth / 2, innerHeight * 0.3, '#c77dff', 120); }
-    if (screen === 'bonus') fx.play('reveal');
+    if (screen === 'bonus' || (screen === 'reveal' && !state.reveal.teamId)) fx.play('reveal');
   }
 
   // Scores: bump, and confetti from the box when a team gains points.
@@ -721,10 +773,8 @@ function effects(screen, oldPts) {
       [...$('order').children].slice(p.order).forEach((li) => li.classList.add('pop'));
     }
     if (prev.locked > p.locked) { fx.play('wrong'); fx.replay($('qText'), 'shake'); fx.replay(document.body, 'redflash'); }
-    if (prev.showAnswer && !p.showAnswer) fx.play('reveal');
   }
-  if (screen === 'bonus' && p.screen === 'question') fx.play('correct');
-  if (screen !== 'question' && p.screen === 'question' && screen !== 'bonus' && state.teams.some((t) => Number(oldPts.get(String(t.id))) < t.score)) fx.play('correct');
+  if (screen !== 'question' && p.screen === 'question' && state.teams.some((t) => Number(oldPts.get(String(t.id))) < t.score)) fx.play('correct');
   if (screen === 'sparkle' && prev.card && !p.card) fx.replay($('spCard'), 'enter');
 
   if (screen === 'lobby' && state.players.some((x) => !p.players.has(x.id))) fx.play('open');

@@ -29,12 +29,19 @@ function join() {
   });
 }
 
+// Which game is this link for? Shown above the name box.
+let game = null; // { packName, packEmoji } or { missing: true }
+const setTop = (main, sub = '') => { $('topName').textContent = main; $('topTeam').textContent = sub; };
+
 // Runs on first connect and after every reconnect, so a dropped phone rejoins as the same person.
-socket.on('connect', () => { if (name) join(); else render(); });
+socket.on('connect', () => {
+  socket.emit('player:peek', code, (res) => { game = res?.ok ? res : { missing: true }; render(); });
+  if (name) join(); else render();
+});
 // Socket.IO keeps retrying on its own. Show it, and retry right away when a sleeping phone wakes up.
 socket.on('disconnect', () => {
   if (ended) return;
-  $('top').textContent = '📶 Reconnecting…';
+  setTop('📶 Reconnecting…');
   $('buzz').disabled = true;
 });
 document.addEventListener('visibilitychange', () => {
@@ -84,15 +91,19 @@ function render() {
   if (ended) {
     show('nameForm', false); show('sparkle', false); show('game', false); show('message', true);
     $('message').textContent = ended;
-    $('top').textContent = 'BuzzIn';
+    setTop('BuzzIn');
     $('top').style.setProperty('--c', '');
     return;
   }
   show('nameForm', !name || (error && !joined));
   if (!name) $('nameInput').value = '';
 
-  $('top').textContent = team ? team.name : 'BuzzIn';
+  // Top bar: who you are, your team and its score.
+  if (me) setTop(me.name, team ? `${team.name} · ${team.score} pts` : 'No team yet');
+  else setTop('BuzzIn');
   $('top').style.setProperty('--c', team ? team.color : '');
+  $('joining').textContent = game?.missing ? 'Game not found. Check the room code.'
+    : game ? `Joining ${game.packEmoji ? game.packEmoji + ' ' : ''}${game.packName} · Room ${code}` : `Room ${code}`;
 
   if (error) { show('message', true); $('message').textContent = error; show('game', false); return; }
   if (!joined || !me) { show('message', false); show('game', false); return; }
@@ -100,7 +111,7 @@ function render() {
   if (!team) {
     show('message', true);
     show('game', false);
-    $('message').textContent = `Hi ${me.name}! Waiting for the host to make teams…`;
+    $('message').textContent = state.teams.length ? `Hi ${me.name}! The host will put you in a team in a moment.` : `Hi ${me.name}! Waiting for the host to make teams…`;
     return;
   }
 
@@ -140,13 +151,16 @@ function render() {
 
   $('buzz').disabled = !b.open || !!myEntry || locked;
   show('doubleNote', !!state.double);
+  // Between questions there's nothing to buzz: point everyone at the TV.
+  show('buzz', state.question);
 
   let msg;
   if (locked) msg = 'Locked out for this question';
   else if (myEntry && turn?.teamId === team.id) msg = myEntry.playerId === playerId ? "You're first!" : `Your team is first! (${playerName(myEntry.playerId)})`;
   else if (myEntry) msg = `Too slow — ${teamName(turn?.teamId)} got it`;
   else if (b.open) msg = 'Buzzers open!';
-  else msg = 'Wait for the host…';
+  else if (state.question) msg = 'Get ready to buzz…';
+  else msg = '👀 Look at the TV';
   if (msg !== lastMsg) {
     const st = $('status');
     const first = msg.includes('first!');

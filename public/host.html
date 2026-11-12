@@ -10,13 +10,20 @@
 <body class="host">
   <header>
     <h1 class="logo"><img class="logo-mark" src="/logo.svg" alt=""><span class="logo-word">Buzz<span>In</span></span></h1>
+    <div id="joinInfo" class="join-info hidden"></div>
     <div class="row header-actions" style="margin:0">
       <button id="switchBoard" class="secondary hidden"></button>
       <button id="finishGame" class="secondary hidden">🏁 Finish game</button>
       <button id="toSparkle" class="secondary hidden">✨ Sparkle Round</button>
       <button id="toLobby" class="secondary hidden">Lobby / teams</button>
+      <button id="howBtn" class="secondary hidden" title="How to play">❓ How to play</button>
       <button id="mute" class="secondary" title="Sound on/off">🔊</button>
-      <button id="newGame" class="secondary">New game</button>
+      <div class="menu-wrap">
+        <button id="menuBtn" class="secondary" title="More" aria-haspopup="true" aria-expanded="false">⋯</button>
+        <div id="menu" class="menu hidden" role="menu">
+          <button id="newGame" class="menu-item" role="menuitem">New game</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -76,11 +83,11 @@
 
       <details id="customise">
         <summary>Customise</summary>
-        <div class="opt"><span class="opt-label">Boards</span><div id="optBoards" class="seg"></div></div>
-        <div class="opt"><span class="opt-label">Sparkle Round</span><div id="optSparkle" class="seg"></div></div>
-        <div class="opt"><span class="opt-label">Sparkle modes</span><div id="optModes" class="seg"></div></div>
-        <div class="opt"><span class="opt-label">Bonuses</span><div id="optBonuses" class="seg"></div></div>
-        <div class="opt"><span class="opt-label">Hidden Double tile</span><div id="optDouble" class="seg"></div></div>
+        <div class="opt"><span class="opt-label">Boards</span><div id="optBoards" class="seg"></div><div class="hint">ⓘ Board 1 is worth 100–500. Board 2 is worth double: 200–1000.</div></div>
+        <div class="opt"><span class="opt-label">Sparkle Round</span><div id="optSparkle" class="seg"></div><div class="hint">ⓘ A party-game break (draw, act or mimic) after this many questions.</div></div>
+        <div class="opt"><span class="opt-label">Sparkle modes</span><div id="optModes" class="seg"></div><div class="hint">ⓘ Which party games the Sparkle Round can use.</div></div>
+        <div class="opt"><span class="opt-label">Bonuses</span><div id="optBonuses" class="seg"></div><div class="hint">ⓘ After a right answer, the team gets a quick silly challenge for +50.</div></div>
+        <div class="opt"><span class="opt-label">Hidden Double tile</span><div id="optDouble" class="seg"></div><div class="hint">ⓘ One secret tile per board: 2× points if right, −2× if wrong.</div></div>
         <div id="optCats"></div>
         <button id="resetSetup" class="secondary">Reset to defaults</button>
       </details>
@@ -129,7 +136,8 @@
   <section id="question" class="hidden">
     <div class="muted" id="qCategory"></div>
     <div id="qNote" class="qnote hidden"></div>
-    <div id="qDouble" class="double-banner hidden">💥 DOUBLE! Worth 2× (and costs 2× if wrong)</div>
+    <div id="qDouble" class="double-banner hidden">💥 DOUBLE!</div>
+    <div id="qDoubleHelp" class="explain hidden"></div>
     <div class="row controls">
       <span id="buzzBadge" class="badge closed">Closed</span>
       <button id="openBuzzers">Open buzzers</button>
@@ -143,15 +151,23 @@
     <div id="peekBox" class="peek hidden"></div>
     <div class="row funny-row" id="funnyRow"></div>
     <div id="qText" class="qtext"></div>
-    <div id="qAnswer" class="qanswer hidden"></div>
-    <div id="qFact" class="qfact hidden"></div>
 
     <ol id="order" class="order"></ol>
+  </section>
+
+  <!-- Reveal: the answer (and fun fact), after Correct or Show answer -->
+  <section id="reveal" class="hidden">
+    <div id="revealHead" class="reveal-head"></div>
+    <div class="reveal-label">The answer</div>
+    <div id="revealAnswer" class="reveal-answer"></div>
+    <div id="revealFact" class="qfact hidden"></div>
+    <div class="row"><button id="revealNext" class="big"></button></div>
   </section>
 
   <!-- Bonus challenge (after a correct answer) -->
   <section id="bonus" class="hidden">
     <div class="card-type" id="bonusFor"></div>
+    <div id="bonusHelp" class="explain hidden">Do this challenge and the host gives your team the bonus points. Skipping is fine.</div>
     <div class="qtext" id="bonusText"></div>
     <div class="row">
       <button id="bonusDone"></button>
@@ -165,6 +181,7 @@
       <h2 class="sparkle-title" style="margin-right:auto">✨ Sparkle Round ✨</h2>
       <button id="skipSparkle" class="secondary">Skip Sparkle</button>
     </div>
+    <div id="sparkleHelp" class="explain hidden">A party-game break: one player draws, acts or mimics, their team guesses, and the host gives points.</div>
 
     <div id="spSetup">
       <h3>1. Which team?</h3>
@@ -217,6 +234,27 @@
     </div>
   </section>
   <div id="emojiRain" class="emoji-rain"></div>
+
+  <!-- How to play: one screen; "Show on TV" makes it big for everyone -->
+  <div id="howto" class="howto hidden" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+    <div class="howto-card">
+      <div class="howto-head">
+        <h2 id="howTitle">How to play</h2>
+        <div class="row" style="margin:0">
+          <button id="howTv" class="secondary">📺 Show on TV</button>
+          <button id="howClose" class="secondary" title="Close">✕</button>
+        </div>
+      </div>
+      <ul class="howto-list">
+        <li><span>🔔</span><div><b>Buzzing</b> The first team to buzz answers. Wrong loses the points, and that team is locked out for the question.</div></li>
+        <li><span>⭐</span><div><b>Bonus</b> Get it right and your team can do a quick, silly challenge for extra points.</div></li>
+        <li><span>💥</span><div><b>Double</b> One hidden tile per board is worth 2× if right, and costs 2× if wrong.</div></li>
+        <li><span>✨</span><div><b>Sparkle Round</b> Every few questions: Draw, Dumb Charades or Mimic. One player performs, their team guesses, and the host gives points.</div></li>
+        <li><span>😂</span><div><b>+5 funny points</b> The host can give +5 for a funny wrong answer.</div></li>
+        <li><span>2️⃣</span><div><b>Board 2</b> Everything is worth double (200–1000).</div></li>
+      </ul>
+    </div>
+  </div>
 
   <!-- Scores -->
   <footer id="scores" class="scores hidden"></footer>
