@@ -1,0 +1,66 @@
+{
+  "format": "buzz-pack-v2",
+  "name": "Party",
+  "emoji": "🎉",
+  "boards": [],
+  "sparkle": {
+    "draw": {
+      "easy": [
+        "Birthday cake",
+        "Umbrella",
+        "Pizza slice",
+        "Sunglasses",
+        "Balloon",
+        "Coffee mug",
+        "Rainbow",
+        "Snowman"
+      ],
+      "medium": [
+        "Selfie stick",
+        "Roller coaster",
+        "Traffic light",
+        "Lighthouse",
+        "Hammock",
+        "Robot vacuum",
+        "Hot air balloon",
+        "Washing machine"
+      ],
+      "tricky": [
+        "Parallel parking",
+        "Someone snoring",
+        "Losing the TV remote",
+        "Airport security line",
+        "Phone battery at 1%",
+        "Group photo where nobody is ready",
+        "Waiting for the food delivery",
+        "Stuck in a lift with a stranger"
+      ]
+    },
+    "charades": [
+      "Brushing your teeth",
+      "Riding a bicycle",
+      "Making popcorn",
+      "Taking a selfie",
+      "Walking a stubborn dog",
+      "Assembling flat-pack furniture",
+      "Ordering at a drive-through",
+      "Opening a jar that won't open",
+      "Packing a suitcase that won't close",
+      "Losing your keys",
+      "Dancing at a wedding",
+      "Watching a scary movie"
+    ],
+    "mimic": [
+      "Ask for the wifi password like a movie villain",
+      "Order coffee like a sports commentator",
+      "Give directions like a nervous tour guide",
+      "Announce dinner is ready like a news anchor",
+      "Apologise for being late like a superhero",
+      "Read a shopping list like a dramatic poem",
+      "Describe the weather like a cooking show host",
+      "Introduce your best friend like a game-show host",
+      "Complain about traffic like a pirate",
+      "Wake someone up like a cheerful flight attendant"
+    ]
+  }
+}

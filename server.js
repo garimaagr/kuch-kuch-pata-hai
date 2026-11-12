@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const QRCode = require('qrcode');
 const buzz = require('./buzz');
 const { makeLimiter, cleanText } = require('./limits');
+const { validatePack, defaultCategories } = require('./pack');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -169,16 +170,6 @@ const DRAW_LEVELS = { easy: 50, medium: 100, tricky: 200 };
 const DECK_KEYS = [...Object.keys(DRAW_LEVELS).map((l) => `draw:${l}`), 'charades', 'mimic'];
 const deckKey = (s) => (s.mode === 'draw' ? `draw:${s.level}` : s.mode);
 
-function loadDecks() {
-  const dares = JSON.parse(fs.readFileSync(path.join(__dirname, 'dares.json'), 'utf8'));
-  const list = (x) => (Array.isArray(x) ? x : []);
-  return {
-    ...Object.fromEntries(Object.keys(DRAW_LEVELS).map((l) => [`draw:${l}`, list(dares.draw?.[l])])),
-    charades: list(dares.charades),
-    mimic: list(dares.mimic),
-  };
-}
-
 function newSparkle() {
   return { teamId: null, mode: null, level: null, performerId: null, cardIdx: null, empty: false, running: false, remaining: SPARKLE_MS, endsAt: null };
 }
@@ -224,12 +215,35 @@ function publicSparkle(room) {
   };
 }
 
-// Board 1 is questions.json; board 2 (questions-2.json) is optional.
-function loadQuestions() {
-  const read = (f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8'));
-  const boards = [read('questions.json')];
-  if (fs.existsSync(path.join(__dirname, 'questions-2.json'))) boards.push(read('questions-2.json'));
-  return boards;
+// ---- Packs ----
+// Built-in packs live in packs/<id>.json. Ids come from this folder, never from a visitor.
+const PACK_DIR = path.join(__dirname, 'packs');
+const DEFAULT_PACK = 'desi';
+
+// Reads and validates a built-in pack. Re-read each game, so hand edits show up on New game.
+function loadBuiltinPack(id, opts = {}) {
+  const ids = fs.readdirSync(PACK_DIR).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5));
+  if (!ids.includes(id)) throw new Error(`No pack called "${id}"`);
+  const res = validatePack(JSON.parse(fs.readFileSync(path.join(PACK_DIR, id + '.json'), 'utf8')), { kind: 'builtin', ...opts });
+  if (!res.ok) throw new Error(`packs/${id}.json: ${res.errors.join(' ')}`);
+  return res.pack;
+}
+
+// The pack's boards in the shape the game uses, each with its 5 default categories.
+function boardsFromPack(pack) {
+  return pack.boards.map((b) => defaultCategories(b).map((c) => ({ category: c.name, note: c.note, questions: c.questions })));
+}
+
+// Sparkle decks: the pack's own cards, or the generic party deck for any mode the pack leaves empty.
+function decksFromPack(pack) {
+  const party = loadBuiltinPack('party', { allowNoBoards: true }).sparkle;
+  const pick = (own, fallback) => (own?.length ? own : fallback || []);
+  const s = pack.sparkle || {};
+  return {
+    ...Object.fromEntries(Object.keys(DRAW_LEVELS).map((l) => [`draw:${l}`, pick(s.draw?.[l], party.draw[l])])),
+    charades: pick(s.charades, party.charades),
+    mimic: pick(s.mimic, party.mimic),
+  };
 }
 
 function currentQuestion(room) {
@@ -318,17 +332,17 @@ io.on('connection', (socket) => {
       if (!ip) return reply(cb, { ok: false, error: "This laptop isn't connected to wifi, so phones can't reach it. Connect to your home wifi and click New game again." });
       joinUrl = `http://${ip}:${PORT}/join/${code}`;
     }
-    let boards, decks;
+    let pack, boards, decks;
     try {
-      // Re-read each game, so hand edits to the JSON files show up.
-      boards = loadQuestions();
-      decks = loadDecks();
+      pack = loadBuiltinPack(DEFAULT_PACK);
+      boards = boardsFromPack(pack);
+      decks = decksFromPack(pack);
     } catch (err) {
-      return reply(cb, { ok: false, error: 'Could not read questions.json, questions-2.json or dares.json: ' + err.message });
+      return reply(cb, { ok: false, error: 'Could not load the question pack: ' + err.message });
     }
     const room = {
       code, joinUrl, hostSecret: crypto.randomBytes(18).toString('base64url'), lastActive: Date.now(), players: new Map(), teams: [], buzz: buzz.newBuzz(),
-      screen: 'lobby', boards, usedBy: boards.map(() => []), boardNo: 0,
+      screen: 'lobby', packName: pack.name, boards, usedBy: boards.map(() => []), boardNo: 0,
       board: boards[0], used: null, current: null, showAnswer: false,
       finished: 0, sparkleDue: false, bonus: null,
       decks, drawn: Object.fromEntries(DECK_KEYS.map((k) => [k, []])), sparkle: null,

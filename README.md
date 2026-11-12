@@ -75,9 +75,28 @@ Hosted on Render, the game has a public https link, so phones can join on any ne
 - **"Port 3000 is already in use":** another program is using that port. Run `PORT=3100 npm start` instead.
 - **The server was restarted:** the game lives in memory, so it's gone. Click **New game**, have everyone rejoin, and fix the scores with **− / +**.
 
-## Adding questions and dares
+## Editing questions and dares (packs)
 
-Edit `questions.json` (board 1) and `questions-2.json` (board 2; delete it to play with one board). Each has 5 categories; each question has `value`, `question`, `answer`, `bonus`, `bonusPoints`; leave out `bonus` to skip the bonus screen. Edit `dares.json` (`draw` has three lists, `easy`, `medium` and `tricky`, plus lists under `charades` and `mimic`; Draw points are `DRAW_LEVELS` in `server.js`). To change how often the Sparkle Round starts, edit `SPARKLE_EVERY` at the top of `server.js`. Changes show up the next time you click **New game**.
+All content lives in **packs** in the `packs/` folder. `packs/desi.json` is the current game (Board 1 "Bollywood", Board 2 "Desi Life"). `packs/party.json` is a general Sparkle deck, used for any Sparkle mode a pack has no cards for.
+
+A pack looks like this:
+
+```json
+{ "format": "buzz-pack-v2", "name": "Desi Night", "emoji": "🪔",
+  "boards": [ { "name": "Bollywood", "categories": [
+    { "name": "Ek Tha Plot", "note": "optional hint for the host", "default": true, "questions": [
+      { "value": 100, "question": "…", "answer": "…", "bonus": "…", "bonusPoints": 50,
+        "funFact": "…", "trapAnswer": "…", "verify": false } ] } ] } ],
+  "sparkle": { "draw": { "easy": [], "medium": [], "tricky": [] }, "charades": [], "mimic": [] } }
+```
+
+- A pack has 1 or 2 boards. Each category has exactly 5 questions.
+- **Board 1** values are 100, 200, 300, 400, 500. **Board 2** values are 200, 400, 600, 800, 1000.
+- A built-in board can have 5–8 categories. Mark 5 with `"default": true` (or the first 5 are used).
+- `note`, `bonus`, `bonusPoints`, `funFact`, `trapAnswer`, `verify` and `sparkle` are optional. Leave out `bonus` to skip the bonus screen.
+- Every pack is checked when a game starts. If something is wrong, **New game** shows exactly what, like "Board 2, category 3 has 4 questions, needs 5".
+
+Draw points are `DRAW_LEVELS` in `server.js`, and how often the Sparkle Round starts is `SPARKLE_EVERY` at the top of `server.js` (6 by default). Changes show up the next time you click **New game**.
 
 ## Test
 
