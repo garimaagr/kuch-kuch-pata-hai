@@ -1,6 +1,7 @@
 // Reads and checks question packs. Every pack goes through validatePack, built-in or uploaded.
 // It only ever uses JSON.parse, rejects anything unexpected, and returns a clean copy.
 const { cleanText } = require('./limits');
+const { parseTable, looksLikeTable, packToTable } = require('./table');
 
 const FORMAT = 'buzz-pack-v2';
 const MAX_PACK_BYTES = 300 * 1024;
@@ -30,8 +31,25 @@ function parsePackText(text) {
   try {
     return { ok: true, value: JSON.parse(s.slice(start, end + 1)) };
   } catch {
+    if (looksCutOff(s.slice(start))) {
+      return { ok: false, errors: ["Claude's reply looks cut off: it stops before the end of the pack. Choose Reply format 📊 Table (it's shorter, and you can paste a \"continue\" reply underneath), or ask Claude to send the whole pack again."] };
+    }
     return { ok: false, errors: ["That isn't valid JSON. Ask Claude to send the pack again as one JSON code block."] };
   }
+}
+
+// True when the JSON opens more { or [ than it closes (outside strings): Claude stopped mid-reply.
+function looksCutOff(s) {
+  let depth = 0;
+  let inStr = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) { if (ch === '\\') i++; else if (ch === '"') inStr = false; }
+    else if (ch === '"') inStr = true;
+    else if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') depth--;
+  }
+  return depth > 0 || inStr;
 }
 
 // Returns { ok: true, pack } with a cleaned copy, or { ok: false, errors: [...] }.
@@ -187,13 +205,16 @@ function packPreview(pack) {
   };
 }
 
-// Pasted text or file contents -> { ok, pack, preview } or { ok: false, errors }. Always the strict upload rules.
-function checkUploadedText(text) {
-  const parsed = parsePackText(text);
+// Pasted text or file contents (JSON, or a CSV / spreadsheet table) -> { ok, pack, preview } or
+// { ok: false, errors }. Always the strict upload rules.
+function checkUploadedText(text, { fallbackName } = {}) {
+  const s = String(text ?? '');
+  if (Buffer.byteLength(s, 'utf8') > MAX_PACK_BYTES) return { ok: false, errors: ['The pack is too big (over 300 KB).'] };
+  const parsed = looksLikeTable(s) ? parseTable(s, { fallbackName: cleanText(fallbackName || '', 40) || 'My pack' }) : parsePackText(s);
   if (!parsed.ok) return parsed;
   const res = validatePack(parsed.value, { kind: 'upload' });
   if (!res.ok) return res;
-  return { ok: true, pack: res.pack, preview: packPreview(res.pack) };
+  return { ok: true, pack: res.pack, preview: packPreview(res.pack), csv: packToTable(res.pack) };
 }
 
 module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, packPreview, checkUploadedText };

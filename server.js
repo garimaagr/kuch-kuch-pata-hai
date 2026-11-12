@@ -380,14 +380,14 @@ io.on('connection', (socket) => {
   // "Make your own": checks a pasted pack and sends back the cleaned pack plus a preview.
   // Changes nothing on the server (the PIN is asked at Start). Counted per game (when the host has one)
   // or per network, and only when hosted.
-  on('host:checkPack', ({ text, code, secret } = {}, cb) => {
+  on('host:checkPack', ({ text, code, secret, name } = {}, cb) => {
     const room = rooms.get(String(code || '').toUpperCase());
     const key = room && sameSecret(secret, room.hostSecret) ? 'room:' + room.code : 'ip:' + clientIp(socket);
     if (PUBLIC_URL && !packChecks.allow(key)) {
       return reply(cb, { ok: false, errors: ['Too many pack checks. Please wait 10 minutes and try again.'] });
     }
     if (typeof text !== 'string') return reply(cb, { ok: false, errors: ['Paste the pack first.'] });
-    reply(cb, checkUploadedText(text));
+    reply(cb, checkUploadedText(text, { fallbackName: typeof name === 'string' ? name : '' }));
   });
 
   on('host:new', async (opts, cb) => {

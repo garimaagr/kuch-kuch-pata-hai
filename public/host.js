@@ -178,12 +178,12 @@ function renderSetup() {
 }
 
 // ---- Make your own: build a prompt, paste Claude's reply, check it on the server, then start ----
-const MO_DEFAULTS = { topic: '', tone: 'silly', boards: 2, sparkle: true };
+const MO_DEFAULTS = { topic: '', tone: 'silly', boards: 2, sparkle: true, format: 'table' };
 let mo = (() => {
   try { return { ...MO_DEFAULTS, ...JSON.parse(load('fbMakeOwn') || '{}') }; } catch { return { ...MO_DEFAULTS }; }
 })();
 const saveMo = () => save('fbMakeOwn', JSON.stringify(mo));
-let custom = null; // { pack, preview } after a pack passes the server's check; lives only in this page
+let custom = null; // { pack, preview, csv } after a pack passes the server's check; lives only in this page
 let moErrors = null; // problems from the last check
 
 const TONES = {
@@ -206,6 +206,19 @@ function makePrompt() {
     ? '- Also include "sparkle": "draw" with 6 easy, 6 medium, 6 tricky things to draw on this topic; "charades" with 10 things to act out; "mimic" with 8 "do X like Y" prompts. Light, kind, party-safe.'
     : '- Do not include "sparkle".';
   const sparkleShape = mo.sparkle ? ',"sparkle":{"draw":{"easy":[],"medium":[],"tricky":[]},"charades":[],"mimic":[]}' : '';
+  const reply = mo.format === 'table' ? [
+    'Reply with ONLY a CSV table in one code block, with exactly this header row:',
+    'Board,Category,Points,Question,Answer,Bonus,Fun fact,Trap answer,Verify',
+    '- First row after the header: Pack,<short pack name>,<one emoji>',
+    '- Then one row per question. Board is the board\'s name (the same on every row of that board). Points are that board\'s values.',
+    '- Leave Fun fact and Trap answer empty when there isn\'t one. Verify is "yes" or empty.',
+    '- Put a cell in double quotes if it contains a comma or a quote, and write any quote inside it as "".',
+    mo.sparkle ? '- Sparkle cards go at the end, one per row, with the card in the Question column: Sparkle,Draw easy,,<thing> (also Draw medium, Draw tricky, Charades, Mimic).' : null,
+    '- If you run out of space, stop at the end of a row. When I say "continue", carry on from the next row.',
+  ] : [
+    'Reply with ONLY one JSON object in one code block, in exactly this format:',
+    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","trapAnswer":"...","verify":false}]}]}]' + sparkleShape + '}',
+  ];
   return [
     'Make a trivia pack for a party buzzer game played by friends in the US and India.',
     '',
@@ -224,10 +237,9 @@ function makePrompt() {
     '- Only use facts you\'re confident about; if unsure set "verify": true.',
     '- Plain text only: no HTML, no links, no images, no song lyrics beyond 2–3 words.',
     '- Max lengths: question 300, answer 100, bonus 150, funFact 200 characters.',
-    sparkleRule,
+    mo.format === 'table' && mo.sparkle ? '- Also include Sparkle cards: 6 easy, 6 medium, 6 tricky things to draw on this topic; 10 things to act out (Charades); 8 "do X like Y" prompts (Mimic). Light, kind, party-safe.' : sparkleRule,
     '',
-    'Reply with ONLY one JSON object in one code block, in exactly this format:',
-    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","trapAnswer":"...","verify":false}]}]}]' + sparkleShape + '}',
+    ...reply.filter((x) => x != null),
   ].join('\n');
 }
 
@@ -240,21 +252,27 @@ function renderMakeOwn() {
   moSeg('moTone', Object.entries(TONES).map(([k, [label]]) => [k, label]), mo.tone, (v) => (mo.tone = v));
   moSeg('moBoards', [[1, '1 board'], [2, '2 boards']], mo.boards, (v) => (mo.boards = v));
   moSeg('moSparkle', [[true, 'Yes'], [false, 'No']], mo.sparkle, (v) => (mo.sparkle = v));
+  moSeg('moFormat', [['table', '📊 Table (Excel / Sheets)'], ['json', '{ } JSON']], mo.format, (v) => (mo.format = v));
+  $('moHow').textContent = mo.format === 'table'
+    ? 'Paste this into Claude. Copy its whole reply and paste it below. If Claude stops early, type "continue" and paste that reply underneath too. Want to review it first? Paste the table into Excel or Google Sheets, edit, then copy all the cells and paste them here (or save as CSV and upload).'
+    : 'Paste this into Claude. Copy its whole reply and paste it below, or download its file and upload it.';
   $('moPrompt').value = makePrompt();
 
   if (moErrors) {
     fill('moResult', h('div', { class: 'mo-errors' },
       h('b', {}, '⚠️ This pack needs fixing:'),
       h('ul', {}, moErrors.map((e) => h('li', {}, e))),
-      h('div', { class: 'muted' }, 'Tip: tell Claude what\'s wrong (copy these lines) and ask for the whole pack again.')));
+      h('div', { class: 'muted' }, 'Tip: fix it in the box (or in your spreadsheet), or copy these lines to Claude and ask it to fix them.')));
   } else if (custom) {
     const p = custom.preview;
     const traps = p.checks.filter((c) => c.kind === 'trap').length;
     const verify = p.checks.filter((c) => c.kind === 'verify').length;
     const startBtn = h('button', { class: 'big' }, '▶ Start game with this pack');
     startBtn.onclick = startNewGame;
-    const dl = h('button', { class: 'secondary' }, '⬇ Download pack');
-    dl.onclick = downloadPack;
+    const dl = h('button', { class: 'secondary' }, '⬇ Download pack (.json)');
+    dl.onclick = () => downloadPack('json');
+    const dlCsv = h('button', { class: 'secondary' }, '⬇ Download for Excel (.csv)');
+    dlCsv.onclick = () => downloadPack('csv');
     fill('moResult', h('div', { class: 'mo-preview' },
       h('h3', {}, `✅ ${p.emoji} ${p.name}`),
       h('div', {}, `${p.questions} questions · ${p.boards.length} board${p.boards.length > 1 ? 's' : ''} · Sparkle deck: ${p.hasSparkle ? 'yes' : 'no (uses the party deck)'}`),
@@ -265,7 +283,7 @@ function renderMakeOwn() {
             h('div', { class: 'where' }, c.where), c.question, ' → ', h('b', {}, c.answer),
             c.kind === 'trap' ? h('span', {}, `  (trap: "${c.trapAnswer}")`) : h('span', {}, '  🔍 verify this fact'))))]
         : h('div', { class: 'muted' }, 'Nothing flagged to check.'),
-      h('div', { class: 'row' }, startBtn, dl)));
+      h('div', { class: 'row' }, startBtn, dlCsv, dl)));
   } else {
     fill('moResult');
   }
@@ -275,19 +293,22 @@ function checkPack() {
   const text = $('moPaste').value;
   if (!text.trim()) { custom = null; moErrors = ['Paste Claude\'s reply (or upload its file) first.']; return renderMakeOwn(); }
   $('moCheck').disabled = true;
-  socket.emit('host:checkPack', { text, code, secret }, (res) => {
+  socket.emit('host:checkPack', { text, code, secret, name: mo.topic }, (res) => {
     $('moCheck').disabled = false;
-    if (res?.ok) { custom = { pack: res.pack, preview: res.preview }; moErrors = null; }
+    if (res?.ok) { custom = { pack: res.pack, preview: res.preview, csv: res.csv }; moErrors = null; }
     else { custom = null; moErrors = res?.errors?.length ? res.errors : ['Something went wrong. Try again.']; }
     renderSetup();
   });
 }
 
-function downloadPack() {
+// Saves the checked pack: JSON (to upload next time) or CSV (to open in Excel / Sheets, edit, and upload).
+function downloadPack(kind) {
   if (!custom) return;
-  const blob = new Blob([JSON.stringify(custom.pack, null, 2) + '\n'], { type: 'application/json' });
+  const blob = kind === 'csv'
+    ? new Blob([custom.csv], { type: 'text/csv' })
+    : new Blob([JSON.stringify(custom.pack, null, 2) + '\n'], { type: 'application/json' });
   const slug = custom.pack.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'my-pack';
-  const a = h('a', { href: URL.createObjectURL(blob), download: `${slug}.json` });
+  const a = h('a', { href: URL.createObjectURL(blob), download: `${slug}.${kind}` });
   document.body.append(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -306,6 +327,11 @@ $('moFile').onchange = () => {
   const file = $('moFile').files[0];
   $('moFile').value = '';
   if (!file) return;
+  if (/\.(xlsx|xls|numbers|ods)$/i.test(file.name)) {
+    custom = null;
+    moErrors = ['That\'s a spreadsheet file. Save it as CSV first (Excel: File → Save As → CSV UTF-8; Google Sheets: File → Download → CSV), or select all the cells, copy, and paste them here.'];
+    return renderSetup();
+  }
   if (file.size > 300 * 1024) { custom = null; moErrors = ['That file is too big (over 300 KB).']; return renderSetup(); }
   file.text().then((text) => { $('moPaste').value = text; checkPack(); });
 };

@@ -141,3 +141,38 @@ test('"Make your own": a pasted Claude reply is checked with the strict rules an
   assert.match(checkUploadedText(JSON.stringify(long)).errors[0], /max 300/);
   assert.match(checkUploadedText('no pack here').errors[0], /Couldn't find a pack/);
 });
+
+test('table format: CSV round trip, Excel copy-paste (tabs), and "continue" replies pasted together', () => {
+  const { packToTable } = require('../table');
+  const p = goodPack();
+  p.boards[0].categories[0].questions[0].question = '=SUM(A1) "quoted", with a comma';
+  p.boards[1].categories[2].questions[1].trapAnswer = 'Trap';
+  p.boards[1].categories[2].questions[1].verify = true;
+  const pack = validatePack(p).pack;
+  const csv = packToTable(pack);
+  assert.ok(csv.includes(`"'=SUM(A1) ""quoted"", with a comma"`), 'formula-looking cells are made safe for Excel');
+  const back = checkUploadedText('Here you go!\n```csv\n' + csv + '\n```\nHave fun!');
+  assert.ok(back.ok, back.errors?.join('\n'));
+  assert.deepStrictEqual(back.pack, pack);
+
+  const lines = csv.replace(/^﻿/, '').split('\r\n');
+  const tsv = lines.map((l) => l.replace(/,/g, '\t')).slice(2).filter((l) => !l.includes('"')).join('\n');
+  const header = lines[0].replace(/,/g, '\t');
+  const excel = checkUploadedText(header + '\n' + tsv.split('\n').filter((l) => !/^Board 1\tCategory 1\t100/.test(l)).join('\n') + '\nBoard 1\tCategory 1\t100\tQ?\tA', { fallbackName: 'From Excel' });
+  assert.ok(excel.ok, excel.errors?.join('\n'));
+  assert.strictEqual(excel.pack.name, 'From Excel');
+
+  const cont = checkUploadedText('```csv\n' + lines.slice(0, 30).join('\n') + '\n```\nSure, continuing:\n```csv\n' + lines[0] + '\n' + lines.slice(29).join('\n') + '\n```');
+  assert.ok(cont.ok, cont.errors?.join('\n'));
+  assert.deepStrictEqual(cont.pack, pack);
+});
+
+test('a cut-off reply says so and suggests what to do', () => {
+  const json = JSON.stringify(goodPack());
+  assert.match(checkUploadedText('```json\n' + json.slice(0, 3000)).errors[0], /cut off/);
+  const { packToTable } = require('../table');
+  const lines = packToTable(validatePack(goodPack()).pack).split('\r\n');
+  const errs = checkUploadedText(lines.slice(0, 20).join('\n')).errors;
+  assert.match(errs[0], /has \d questions?, needs 5/);
+  assert.match(errs[errs.length - 1], /continue/);
+});

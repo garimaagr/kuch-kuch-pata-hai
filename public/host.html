@@ -39,15 +39,16 @@
       <div class="opt"><span class="opt-label">Tone</span><div id="moTone" class="seg"></div></div>
       <div class="opt"><span class="opt-label">Boards</span><div id="moBoards" class="seg"></div></div>
       <div class="opt"><span class="opt-label">Sparkle deck</span><div id="moSparkle" class="seg"></div></div>
+      <div class="opt"><span class="opt-label">Reply format</span><div id="moFormat" class="seg"></div></div>
 
       <div class="mo-step"><b>1.</b> Copy this prompt.</div>
       <textarea id="moPrompt" class="mo-box" rows="7" readonly></textarea>
       <button id="moCopy" class="secondary">📋 Copy prompt</button> <span id="moCopied" class="muted"></span>
 
-      <div class="mo-step"><b>2.</b> Paste this into Claude. Copy its whole reply and paste it below, or download its file and upload it.</div>
+      <div class="mo-step"><b>2.</b> <span id="moHow"></span></div>
       <textarea id="moPaste" class="mo-box" rows="7" placeholder="Paste pack here"></textarea>
       <div class="row">
-        <label class="secondary filebtn">📂 Upload .json<input id="moFile" type="file" accept=".json,.txt,application/json,text/plain" hidden></label>
+        <label class="secondary filebtn">📂 Upload .csv / .json<input id="moFile" type="file" accept=".json,.csv,.tsv,.txt,.xlsx,.xls,application/json,text/csv,text/plain" hidden></label>
         <button id="moCheck">✔ Check pack</button>
       </div>
       <div id="moResult"></div>

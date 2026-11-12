@@ -48,12 +48,18 @@ It prints something like:
 ## ✨ Make your own (any topic, made with Claude)
 
 1. Click **New game**, then the **✨ Make your own** card.
-2. Type a **topic** (like "90s cartoons" or "our office"), pick the **tone** (😂 Silly, 🙂 Mixed or 🤓 Nerdy), **1 or 2 boards**, and whether you want a **Sparkle deck**.
+2. Type a **topic** (like "90s cartoons" or "our office"), pick the **tone** (😂 Silly, 🙂 Mixed or 🤓 Nerdy), **1 or 2 boards**, whether you want a **Sparkle deck**, and the **reply format**:
+   - **📊 Table (Excel / Sheets)**, recommended: Claude replies with one row per question. You can review and edit it in a spreadsheet, and if Claude stops halfway you can ask it to continue.
+   - **{ } JSON**: the raw pack format.
 3. Click **📋 Copy prompt** and paste it into Claude (claude.ai).
-4. Copy Claude's **whole reply** and paste it into the **Paste pack here** box. (If Claude gives you a file instead, download it and use **📂 Upload .json**.)
-5. Click **✔ Check pack**. If something's wrong, you'll see a list like "Board 2, category 3 has 4 questions, needs 5". Copy those lines back to Claude and ask for the whole pack again.
-6. Read the **⚠️ Check these** list: facts Claude wasn't sure of (🔍 verify) and every trap answer. Fix anything wrong in the paste box and check again.
-7. Click **⬇ Download pack** to keep it. Next time, just upload that file. Then **▶ Start game with this pack**.
+4. Copy Claude's **whole reply** into the **Paste pack here** box.
+   - **Claude stopped halfway (Table)?** Type "continue" in Claude and paste that reply underneath the first one. Repeated header rows are fine.
+   - **Want to review it first (Table)?** Paste the table into Excel or Google Sheets, fix anything, then select all the cells, copy, and paste them into the box. Or save as **CSV** and use **📂 Upload .csv / .json**. (.xlsx files aren't read directly: save as CSV first.)
+5. Click **✔ Check pack**. If something's wrong, you'll see a list like `"Saturday Morning" → "Theme Tunes" has 4 questions, needs 5`. Fix it, or copy those lines back to Claude.
+6. Read the **⚠️ Check these** list: facts Claude wasn't sure of (🔍 verify) and every trap answer.
+7. Keep a copy with **⬇ Download for Excel (.csv)** or **⬇ Download pack (.json)**. Either file can be uploaded next time. Then **▶ Start game with this pack**.
+
+**Table columns:** `Board, Category, Points, Question, Answer, Bonus, Fun fact, Trap answer, Verify`. An optional first row `Pack, <name>, <emoji>` sets the pack's name; otherwise the topic is used. Sparkle cards are rows like `Sparkle, Draw easy, , <thing>` (also `Draw medium`, `Draw tricky`, `Charades`, `Mimic`). Board 1 uses 100–500 points and Board 2 uses 200–1000.
 
 An uploaded pack lives only in that game's memory and is gone when the server restarts, so keep the downloaded file. It must follow the strict rules: exactly 5 categories per board, and questions up to 300 characters.
 
