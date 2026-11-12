@@ -82,7 +82,7 @@ Hosted on Render, the game has a public https link, so phones can join on any ne
 
 ## Editing questions and dares (packs)
 
-All content lives in **packs** in the `packs/` folder. `packs/desi.json` is the current game (Board 1 "Bollywood", Board 2 "Desi Life"). `packs/party.json` is a general Sparkle deck, used for any Sparkle mode a pack has no cards for.
+All content lives in **packs** in the `packs/` folder. `packs/desi.json` is Desi Night (Board 1 "Bollywood", Board 2 "Desi Life"). `packs/world.json` is World Trivia (Board 1 "Around the World", Board 2 "History & Weirdness"). `packs/party.json` is a general Sparkle deck, used for any Sparkle mode a pack has no cards for.
 
 A pack looks like this:
 
