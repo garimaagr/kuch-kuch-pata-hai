@@ -221,7 +221,7 @@ let custom = null; // { pack, preview, csv } after a pack passes the server's ch
 let moErrors = null; // problems from the last check
 
 const TONES = {
-  silly: ['😂 Silly', 'funny and guessable; badly explained and overly wordy clues'],
+  silly: ['😂 Silly', 'funny and guessable; playful, cheeky question wording that gets a laugh'],
   mixed: ['🙂 Mixed', 'fun with some real trivia'],
   nerdy: ['🤓 Nerdy', 'harder, for fans, still playful'],
 };
