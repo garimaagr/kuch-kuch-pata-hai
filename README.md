@@ -26,7 +26,7 @@ It prints something like:
 1. Open the host page on the laptop and share that window to the TV. Turn the TV or laptop volume up for the buzz, correct and wrong sounds (the 🔊 button at the top mutes them).
 2. Click **New game**, pick a theme card, and click **▶ Start**. Friends scan the QR code (or type the link) and enter their name.
    - **Customise** (optional, remembered for next time): play both boards, Board 1 only or Board 2 only; Sparkle Round off or every 3, 4 or 6 questions; which Sparkle modes; bonuses on or off; the hidden Double on or off; and which 5 categories each board uses.
-3. Click **Make random teams** (2–4 teams). Use **Reshuffle** or the dropdowns to move people around.
+3. Click **Make random teams** (2–4 teams). Team names fit the theme (Desi Night: Team Mogambo, Team Basanti…; TV & Movies: Team Popcorn, Team Remote…), and the theme details show them before you start. Use **Reshuffle** or the dropdowns to move people around.
 4. Click **Go to the board →** and play:
    - Click a tile, read the question, then **Open buzzers**. The **💬 How to play** line under the category says what players should answer (hover a category on the board, or open Customise, to see it before picking). The buzz order shows on screen.
    - **✅ Correct** adds the points, then shows that team a **bonus challenge**: tap **Bonus done +50** or **Skip bonus**. **❌ Wrong** takes the points away, locks that team out, and passes the turn to the next team in line.
@@ -59,7 +59,7 @@ It prints something like:
 6. Read the **⚠️ Check these** list: facts Claude wasn't sure of (🔍 verify).
 7. Keep a copy with **⬇ Download for Excel (.csv)** or **⬇ Download pack (.json)**. Either file can be uploaded next time. Then **▶ Start game with this pack**.
 
-**Table columns:** `Board, Category, Points, Question, Answer, Bonus, Fun fact, Verify, How to play` (How to play only needs filling on a category's first row). An optional first row `Pack, <name>, <emoji>` sets the pack's name; otherwise the topic is used. Sparkle cards are rows like `Sparkle, Draw easy, , <thing>` (also `Draw medium`, `Draw tricky`, `Charades`, `Mimic`). Board 1 uses 100–500 points and Board 2 uses 200–1000.
+**Table columns:** `Board, Category, Points, Question, Answer, Bonus, Fun fact, Verify, How to play` (How to play only needs filling on a category's first row). An optional first row `Pack, <name>, <emoji>` sets the pack's name; otherwise the topic is used. Up to 4 rows `Team, <team name>` set the team names (Claude adds them; without them the teams are Team Red, Yellow, Green and Pink). Sparkle cards are rows like `Sparkle, Draw easy, , <thing>` (also `Draw medium`, `Draw tricky`, `Charades`, `Mimic`). Board 1 uses 100–500 points and Board 2 uses 200–1000.
 
 An uploaded pack lives only in that game's memory and is gone when the server restarts, so keep the downloaded file. It must follow the strict rules: exactly 5 categories per board, and questions up to 300 characters.
 
@@ -107,6 +107,7 @@ A pack looks like this:
 
 ```json
 { "format": "buzz-pack-v2", "name": "Desi Night", "emoji": "🪔",
+  "teams": ["Team Mogambo", "Team Basanti", "Team Gabbar", "Team Poo"],
   "boards": [ { "name": "Bollywood", "categories": [
     { "name": "Ek Tha Plot", "note": "optional hint for the host", "default": true, "questions": [
       { "value": 100, "question": "…", "answer": "…", "bonus": "…", "bonusPoints": 50,
@@ -117,7 +118,7 @@ A pack looks like this:
 - A pack has 1 or 2 boards. Each category has exactly 5 questions.
 - **Board 1** values are 100, 200, 300, 400, 500. **Board 2** values are 200, 400, 600, 800, 1000.
 - A built-in board can have 5–8 categories. Mark 5 with `"default": true` (or the first 5 are used).
-- `note` is the category's "how to play" line, shown to the host. `bonus`, `bonusPoints`, `funFact`, `verify` and `sparkle` are optional. (An old `trapAnswer` field is ignored.) Leave out `bonus` to skip the bonus screen.
+- `teams` (optional) is up to 4 different team names, max 24 characters each. `note` is the category's "how to play" line, shown to the host. `bonus`, `bonusPoints`, `funFact`, `verify` and `sparkle` are optional. (An old `trapAnswer` field is ignored.) Leave out `bonus` to skip the bonus screen.
 - Every pack is checked when a game starts. If something is wrong, **New game** shows exactly what, like "Board 2, category 3 has 4 questions, needs 5".
 
 Draw points are `DRAW_LEVELS` in `server.js`, and how often the Sparkle Round starts is `SPARKLE_EVERY` at the top of `server.js` (6 by default). Changes show up the next time you click **New game**.

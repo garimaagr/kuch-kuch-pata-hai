@@ -4,6 +4,7 @@
 //
 //   Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify,How to play
 //   Pack,90s Cartoons,📼                          <- optional: pack name and emoji
+//   Team,Team Saturday Morning                    <- optional: a team name (up to 4 rows)
 //   Theme Tunes,Explained Badly,100,…,…,…,,,      <- a question (Board = the board's name)
 //   Sparkle,Draw easy,,Skateboard                 <- a Sparkle card (item in the Question column)
 
@@ -86,6 +87,10 @@ function parseTable(text, { fallbackName = 'My pack' } = {}) {
       pack.emoji = cellText(r[cols.points]);
       return;
     }
+    if (norm(board) === 'team' || norm(board) === 'teams') { // Team,<name> (or several names on one row)
+      r.slice(1).map(cellText).filter(Boolean).forEach((t) => (pack.teams ||= []).push(t));
+      return;
+    }
     if (norm(board) === 'sparkle') {
       const where = SPARKLE_LISTS[norm(get(r, 'category'))];
       const item = get(r, 'question');
@@ -155,6 +160,7 @@ function packToTable(pack) {
   };
   const rows = [['Board', 'Category', 'Points', 'Question', 'Answer', 'Bonus', 'Fun fact', 'Verify', 'How to play']];
   rows.push(['Pack', pack.name, pack.emoji || '']);
+  for (const t of pack.teams || []) rows.push(['Team', t]);
   for (const b of pack.boards) for (const c of b.categories) c.questions.forEach((q, i) => {
     rows.push([b.name, c.name, q.value, q.question, q.answer, q.bonus || '', q.funFact || '', q.verify ? 'yes' : '', i === 0 ? c.note || '' : '']);
   });

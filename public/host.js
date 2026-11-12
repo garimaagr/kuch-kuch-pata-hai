@@ -140,7 +140,9 @@ function renderSetup() {
   if (!pack) return;
   const inPlay = boardsInPlay(pack);
   $('themeTitle').textContent = `${pack.emoji || ''} ${pack.name}`;
-  $('themeBoards').textContent = inPlay.map((bi) => `Board ${bi + 1}: ${pack.boards[bi].name}`).join('  ·  ');
+  fill('themeBoards',
+    h('div', {}, inPlay.map((bi) => `Board ${bi + 1}: ${pack.boards[bi].name}`).join('  ·  ')),
+    pack.teams?.length ? [h('div', {}, 'Teams: ' + pack.teams.join(', '))] : []);
 
   seg('optBoards', pack.boards.length < 2 ? [['both', 'Board 1']] :
     [['both', 'Both'], ['1', 'Board 1 only'], ['2', 'Board 2 only']], pack.boards.length < 2 ? 'both' : setup.boards, (v) => (setup.boards = v));
@@ -210,7 +212,7 @@ const TONES = {
 function customSummary() {
   if (!custom) return null;
   const p = custom.preview;
-  return { id: 'custom', name: p.name, emoji: p.emoji || '✨', hasSparkle: p.hasSparkle,
+  return { id: 'custom', name: p.name, emoji: p.emoji || '✨', hasSparkle: p.hasSparkle, teams: p.teams,
     boards: p.boards.map((b) => ({ name: b.name, categories: b.categories.map((name) => ({ name, default: true })) })) };
 }
 
@@ -224,6 +226,7 @@ function makePrompt() {
     'Reply with ONLY a CSV table in one code block, with exactly this header row:',
     'Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify,How to play',
     '- First row after the header: Pack,<short pack name>,<one emoji>',
+    '- Then 4 team rows: Team,<team name> (one per row).',
     '- Then one row per question. Board is the board\'s name (the same on every row of that board). Points are that board\'s values.',
     '- Leave Fun fact empty when there isn\'t one. Verify is "yes" or empty. Fill How to play on the first row of each category only.',
     '- Put a cell in double quotes if it contains a comma or a quote, and write any quote inside it as "".',
@@ -231,7 +234,7 @@ function makePrompt() {
     '- If you run out of space, stop at the end of a row. When I say "continue", carry on from the next row.',
   ] : [
     'Reply with ONLY one JSON object in one code block, in exactly this format:',
-    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
+    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","teams":["Team ...","Team ...","Team ...","Team ..."],"boards":[{"name":"<board name>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
   ];
   return [
     `Make a trivia pack for a party buzzer game played by ${(REGIONS[mo.region] || REGIONS.mixed)[1]}.`,
@@ -246,6 +249,7 @@ function makePrompt() {
     '- Every category gets a short "how to play" line for the host (max 100 characters) saying what players should answer, e.g. "A movie plot described badly. Name the film".',
     (REGIONS[mo.region] || REGIONS.mixed)[2],
     '- Answers short (a name, title or a few words).',
+    '- 4 fun team names that fit the topic, each starting with "Team" (max 24 characters), e.g. for space: "Team Black Hole".',
     '- Every question has "bonus": a quick, silly, safe thing to do in under 15 seconds that fits the answer. bonusPoints is 50.',
     '- Optional "funFact": one short "did you know" line.',
     '- Only use facts you\'re confident about; if unsure set "verify": true.',
@@ -290,6 +294,7 @@ function renderMakeOwn() {
     fill('moResult', h('div', { class: 'mo-preview' },
       h('h3', {}, `✅ ${p.emoji} ${p.name}`),
       h('div', {}, `${p.questions} questions · ${p.boards.length} board${p.boards.length > 1 ? 's' : ''} · Sparkle deck: ${p.hasSparkle ? 'yes' : 'no (uses the party deck)'}`),
+      h('div', {}, 'Teams: ' + (p.teams.length ? p.teams.join(', ') : 'Team Red, Team Yellow, Team Green, Team Pink (none in the pack)')),
       p.boards.flatMap((b, bi) => [h('div', { class: 'mo-step' }, h('b', {}, `Board ${bi + 1}: ${b.name}`)), h('div', { class: 'cats' }, b.categories.join('  ·  '))]),
       p.checks.length
         ? [h('b', {}, `⚠️ Check these (${verify} fact${verify === 1 ? '' : 's'} Claude wasn't sure of)`),

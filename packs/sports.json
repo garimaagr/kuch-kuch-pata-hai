@@ -2,6 +2,12 @@
   "format": "buzz-pack-v2",
   "name": "Sports",
   "emoji": "🏆",
+  "teams": [
+    "Team Underdogs",
+    "Team Hat-trick",
+    "Team Photo Finish",
+    "Team Buzzer Beaters"
+  ],
   "boards": [
     {
       "name": "Rules & Basics",

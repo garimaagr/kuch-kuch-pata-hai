@@ -5,6 +5,8 @@ const { parseTable, looksLikeTable, packToTable } = require('./table');
 
 const FORMAT = 'buzz-pack-v2';
 const MAX_PACK_BYTES = 300 * 1024;
+const MAX_TEAMS = 4;
+const TEAM_NAME_MAX = 24;
 const BOARD_VALUES = [
   [100, 200, 300, 400, 500], // Board 1
   [200, 400, 600, 800, 1000], // Board 2 (double)
@@ -79,13 +81,24 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false } = {}) {
   };
 
   if (!isObj(input)) return { ok: false, errors: ['A pack must be one JSON object.'] };
-  onlyKeys(input, ['format', 'name', 'emoji', 'boards', 'sparkle'], 'The pack');
+  onlyKeys(input, ['format', 'name', 'emoji', 'teams', 'boards', 'sparkle'], 'The pack');
   if (input.format !== FORMAT) err(`"format" must be "${FORMAT}".`);
   const pack = { format: FORMAT, name: str(input.name, L.name, 'The pack name'), emoji: undefined, boards: [] };
   if (input.emoji != null) {
     const e = str(input.emoji, 40, 'The emoji');
     if (e && [...e].length > L.emoji) err(`The emoji is too long (max ${L.emoji} characters).`);
     else pack.emoji = e;
+  }
+
+  // ---- Team names (optional): up to 4, used in order for Team 1, 2, 3, 4 ----
+  if (input.teams != null) {
+    if (!Array.isArray(input.teams)) err('"teams" must be a list of team names.');
+    else if (input.teams.length > MAX_TEAMS) err(`"teams" has ${input.teams.length} names, max ${MAX_TEAMS}.`);
+    else {
+      const names = input.teams.map((t, i) => str(t, TEAM_NAME_MAX, `Team name ${ordinal(i)}`)).filter(Boolean);
+      if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) err('The team names must all be different.');
+      if (names.length) pack.teams = names;
+    }
   }
 
   // ---- Boards ----
@@ -197,6 +210,7 @@ function packPreview(pack) {
   })));
   return {
     name: pack.name, emoji: pack.emoji || '',
+    teams: pack.teams || [],
     boards: pack.boards.map((b) => ({ name: b.name, categories: b.categories.map((c) => c.name) })),
     questions: pack.boards.reduce((n, b) => n + b.categories.length * 5, 0),
     hasSparkle: !!pack.sparkle,

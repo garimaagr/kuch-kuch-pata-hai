@@ -178,3 +178,27 @@ test('a cut-off reply says so and suggests what to do', () => {
   assert.match(errs[0], /has \d questions?, needs 5/);
   assert.match(errs[errs.length - 1], /continue/);
 });
+
+test('team names: optional, up to 4, different, and kept through the table format', () => {
+  const { packToTable } = require('../table');
+  const p = goodPack();
+  p.teams = ['Team Rocket', 'Team Comet', 'Team Orbit', 'Team Nebula'];
+  const res = validatePack(p, { kind: 'upload' });
+  assert.ok(res.ok, res.errors?.join('\n'));
+  assert.deepStrictEqual(res.pack.teams, p.teams);
+  const back = checkUploadedText(packToTable(res.pack));
+  assert.ok(back.ok, back.errors?.join('\n'));
+  assert.deepStrictEqual(back.pack.teams, p.teams);
+  assert.deepStrictEqual(back.preview.teams, p.teams);
+
+  assert.match(firstError(validatePack({ ...p, teams: ['A', 'B', 'C', 'D', 'E'] })), /max 4/);
+  assert.match(firstError(validatePack({ ...p, teams: ['Team X', 'team x'] })), /different/);
+  assert.match(firstError(validatePack({ ...p, teams: ['x'.repeat(25)] })), /too long|max/i);
+  assert.match(firstError(validatePack({ ...p, teams: 'Team X' })), /list/);
+  assert.strictEqual(validatePack(goodPack()).pack.teams, undefined, 'no teams is fine');
+
+  for (const id of ['desi', 'world', 'tv', 'sports']) {
+    const pack = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'packs', id + '.json'), 'utf8'));
+    assert.strictEqual(pack.teams?.length, 4, `${id} has 4 team names`);
+  }
+});

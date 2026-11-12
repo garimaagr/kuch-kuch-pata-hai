@@ -2,6 +2,12 @@
   "format": "buzz-pack-v2",
   "name": "World Trivia",
   "emoji": "🌍",
+  "teams": [
+    "Team Passport",
+    "Team Compass",
+    "Team Jet Lag",
+    "Team Postcard"
+  ],
   "boards": [
     {
       "name": "Around the World",

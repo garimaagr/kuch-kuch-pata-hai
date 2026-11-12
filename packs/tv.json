@@ -2,6 +2,12 @@
   "format": "buzz-pack-v2",
   "name": "TV & Movies",
   "emoji": "📺",
+  "teams": [
+    "Team Popcorn",
+    "Team Remote",
+    "Team Binge",
+    "Team Spoiler"
+  ],
   "boards": [
     {
       "name": "Shows",

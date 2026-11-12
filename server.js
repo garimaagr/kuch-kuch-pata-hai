@@ -67,12 +67,15 @@ function wifiIp() {
   return found[0] || null;
 }
 
+// Team colours are fixed; the names come from the pack's "teams" list (each theme has its own),
+// and these plain names fill in for a pack without one.
 const TEAM_DEFS = [
-  { name: 'Team Mogambo', color: '#d32f2f' },
-  { name: 'Team Basanti', color: '#f9a825' },
-  { name: 'Team Gabbar', color: '#2e7d32' },
-  { name: 'Team Poo', color: '#ec407a' },
+  { name: 'Team Red', color: '#d32f2f' },
+  { name: 'Team Yellow', color: '#f9a825' },
+  { name: 'Team Green', color: '#2e7d32' },
+  { name: 'Team Pink', color: '#ec407a' },
 ];
+const teamNamesFor = (pack) => TEAM_DEFS.map((d, i) => pack.teams?.[i] || d.name);
 
 // ---- Game state (in memory only) ----
 const rooms = new Map(); // code -> room
@@ -254,7 +257,7 @@ function packSummaries() {
     try {
       const pack = loadBuiltinPack(t.id);
       return {
-        id: t.id, name: pack.name, emoji: pack.emoji || t.emoji, hasSparkle: !!pack.sparkle,
+        id: t.id, name: pack.name, emoji: pack.emoji || t.emoji, hasSparkle: !!pack.sparkle, teams: teamNamesFor(pack),
         boards: pack.boards.map((b) => {
           const defaults = defaultCategories(b);
           return { name: b.name, categories: b.categories.map((c) => ({ name: c.name, note: c.note, default: defaults.includes(c) })) };
@@ -339,7 +342,7 @@ function closeQuestion(room) {
 function makeTeams(room, count) {
   const n = Math.min(4, Math.max(2, Number(count) || 2));
   const oldScores = new Map(room.teams.map((t) => [t.id, t.score]));
-  room.teams = TEAM_DEFS.slice(0, n).map((d, i) => ({ id: i, ...d, score: oldScores.get(i) || 0 }));
+  room.teams = TEAM_DEFS.slice(0, n).map((d, i) => ({ id: i, ...d, name: room.teamNames[i], score: oldScores.get(i) || 0 }));
   shuffle([...room.players.values()]).forEach((p, i) => (p.teamId = i % n));
   buzz.resetBuzz(room.buzz);
   room.sparkle = null;
@@ -432,7 +435,7 @@ io.on('connection', (socket) => {
     const publicSettings = { sparkleEvery: settings.sparkleEvery, modes: settings.modes, bonuses: settings.bonuses, double: settings.double };
     const room = {
       code, joinUrl, hostSecret: crypto.randomBytes(18).toString('base64url'), lastActive: Date.now(), players: new Map(), teams: [], buzz: buzz.newBuzz(),
-      screen: 'lobby', packName: pack.name, packEmoji: pack.emoji || '', settings: publicSettings,
+      screen: 'lobby', packName: pack.name, packEmoji: pack.emoji || '', teamNames: teamNamesFor(pack), settings: publicSettings,
       boards, boardNames, usedBy: boards.map(() => []), boardNo: 0, doubles: pickDoubles(boards),
       board: boards[0], used: null, current: null, showAnswer: false,
       finished: 0, sparkleDue: false, bonus: null,
