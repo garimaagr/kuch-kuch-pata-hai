@@ -97,7 +97,10 @@ input { width: 100%; margin: 0.5em 0; }
 .qtext.xlong { font-size: clamp(1.1rem, 2.1vw, 2rem); line-height: 1.3; margin: 1rem 0; }
 
 /* ---- Polish ---- */
-body { background: radial-gradient(ellipse at top, #34206b 0%, #1a1033 55%, #110a24 100%) fixed; }
+/* A solid dark colour on the page itself, so nothing ever flashes white while the gradient repaints
+   (e.g. jumping from the long Make your own page to the short lobby). No 'fixed': it repaints badly. */
+html { background: #110a24; }
+body { min-height: 100vh; background: radial-gradient(ellipse at top, #34206b 0%, #1a1033 55%, #110a24 100%) no-repeat; background-color: #110a24; }
 button { box-shadow: 0 3px 0 rgba(0,0,0,0.35); transition: filter 0.15s; }
 button:hover:not(:disabled) { filter: brightness(1.08); }
 button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.35); }

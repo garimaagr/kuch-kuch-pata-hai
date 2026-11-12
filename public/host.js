@@ -31,6 +31,7 @@ let state = null;
 let sparkleEndsAt = null; // local clock time when the timer runs out (only while running)
 let prev = null; // what the last render showed, so effects only fire on changes
 let lastSecs = null;
+let lastScreen = null; // so a new screen scrolls to the top (and not on every update)
 const seen = new Set(); // players already shown, so only new ones pop in
 
 const MODES = {
@@ -488,6 +489,8 @@ $('scores').onclick = (e) => {
 
 function render() {
   const screen = setupOpen ? 'setup' : !state ? 'start' : state.current ? 'question' : state.bonus ? 'bonus' : state.screen;
+  if (screen !== lastScreen) window.scrollTo(0, 0); // a new screen starts at the top
+  lastScreen = screen;
   for (const s of ['start', 'setup', 'lobby', 'board', 'question', 'bonus', 'sparkle', 'winner']) show(s, s === screen);
   show('toLobby', screen === 'board');
   show('toSparkle', screen === 'board' && !!state?.settings?.sparkleEvery);
