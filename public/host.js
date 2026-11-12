@@ -19,7 +19,9 @@ function h(tag, props = {}, ...kids) {
   return el;
 }
 const fill = (id, ...kids) => $(id).replaceChildren(...kids.flat());
-const emit = (ev, data) => () => socket.emit(ev, data);
+// A game action. It carries the state version, so the same tap from the TV and a remote counts once.
+const act = (ev, data) => socket.emit(ev, data, state?.version);
+const emit = (ev, data) => () => act(ev, data);
 
 function load(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function save(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} }
@@ -414,13 +416,58 @@ $('menuBtn').onclick = (e) => { e.stopPropagation(); setMenu($('menu').classList
 document.addEventListener('click', (e) => { if (!e.target.closest('.menu-wrap')) setMenu(false); });
 $('newGame').onclick = () => { setMenu(false); openSetup(); };
 
+// ---- Host remote: pair a phone (QR → the phone waits → Allow on this screen) ----
+let pairing = null; // { qr, expiresAt } while this screen shows a pairing QR
+let pairTimer = null;
+let forceControls = false; // "Show controls" while a remote is connected
+function startPair() {
+  setMenu(false);
+  $('pairMsg').textContent = '';
+  socket.emit('host:pairStart', (res) => {
+    if (!res?.ok) { pairing = null; $('pairMsg').textContent = res?.error || 'Could not start pairing.'; show('pair', true); renderPair(); return; }
+    pairing = { qr: res.qr, expiresAt: Date.now() + (res.expiresAt - Date.now()) };
+    $('pairQr').src = res.qr;
+    show('pair', true);
+    renderPair();
+  });
+}
+function closePair() {
+  if (state?.pairing) act('host:pairCancel');
+  pairing = null;
+  show('pair', false);
+}
+// The QR shows only while the code is unused and unexpired; then the TV asks Allow / Deny.
+function renderPair() {
+  clearTimeout(pairTimer);
+  const asking = !!state?.pairing?.waitingForAllow;
+  const left = pairing ? Math.ceil((pairing.expiresAt - Date.now()) / 1000) : 0;
+  if (pairing && !asking && left <= 0) { pairing = null; $('pairMsg').textContent = 'That code expired. Close this and tap 📱 again.'; }
+  if (asking) show('pair', true);
+  show('pairAsk', asking);
+  show('pairScan', !asking && !!pairing);
+  if (!asking && pairing) {
+    $('pairLeft').textContent = `Code works for ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}.`;
+    pairTimer = setTimeout(renderPair, 1000);
+  }
+}
+$('pairMenu').onclick = startPair;
+$('pairLobby').onclick = startPair;
+$('pairClose').onclick = closePair;
+$('pairAllow').onclick = () => { socket.emit('host:pairDecision', true); pairing = null; show('pair', false); };
+$('pairDeny').onclick = () => { socket.emit('host:pairDecision', false); pairing = null; show('pair', false); };
+$('revokeRemotes').onclick = () => {
+  setMenu(false);
+  if (confirm('Disconnect every phone remote? They will need to scan again.')) socket.emit('host:revokeRemotes');
+};
+$('showControls').onclick = () => { forceControls = !forceControls; render(); };
+
 // How to play: a one-screen panel; "Show on TV" makes it big
 const setHow = (open, tv = false) => { show('howto', open); $('howto').classList.toggle('tv', tv); $('howTv').textContent = tv ? '↙ Smaller' : '📺 Show on TV'; };
 $('howBtn').onclick = () => setHow(true);
 $('howClose').onclick = () => setHow(false);
 $('howTv').onclick = () => setHow(true, !$('howto').classList.contains('tv'));
 $('howto').onclick = (e) => { if (e.target === $('howto')) setHow(false); };
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setHow(false); setMenu(false); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setHow(false); setMenu(false); if (!state?.pairing?.waitingForAllow) closePair(); } });
 $('startGame').onclick = startNewGame;
 $('cancelSetup').onclick = () => { setupOpen = false; render(); };
 $('themes').onclick = (e) => {
@@ -434,18 +481,18 @@ $('themes').onclick = (e) => {
 if (load('fbCustomiseOpen') === '0') $('customise').open = false;
 $('customise').addEventListener('toggle', () => save('fbCustomiseOpen', $('customise').open ? '1' : '0'));
 $('resetSetup').onclick = () => { setup = { ...SETUP_DEFAULTS, packId: setup.packId }; saveSetup(); renderSetup(); };
-$('finishGame').onclick = () => { if (confirm('Finish the game and show the winner?')) socket.emit('host:screen', 'winner'); };
+$('finishGame').onclick = () => { if (confirm('Finish the game and show the winner?')) act('host:screen', 'winner'); };
 $('finishBig').onclick = emit('host:screen', 'winner');
 $('winnerBack').onclick = emit('host:screen', 'board');
 $('winnerNew').onclick = () => { state = null; openSetup(); };
-$('nextBoard').onclick = () => socket.emit('host:switchBoard', 1);
+$('nextBoard').onclick = () => act('host:switchBoard', 1);
 // Hold to peek: shows the answer only while the button is held down.
 const peek = (on) => show('peekBox', on && !!state?.current);
 $('peek').onpointerdown = (e) => { e.preventDefault(); peek(true); };
 for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) $('peek').addEventListener(ev, () => peek(false));
 $('pinGo').onclick = startNewGame;
 $('pin').onkeydown = (e) => { if (e.key === 'Enter') startNewGame(); };
-$('makeTeams').onclick = () => socket.emit('host:makeTeams', Number($('teamCount').value));
+$('makeTeams').onclick = () => act('host:makeTeams', Number($('teamCount').value));
 $('toBoard').onclick = emit('host:screen', 'board');
 $('startBig').onclick = openSetup;
 $('toLobby').onclick = emit('host:screen', 'lobby');
@@ -453,16 +500,16 @@ $('toSparkle').onclick = emit('host:screen', 'sparkle');
 $('switchBoard').onclick = () => {
   const to = state.boardNo === 0 ? 1 : 0;
   if (to === 1 && !state.boardDone && !confirm(`Board 1 isn't finished. Jump to Board 2 anyway? You can come back.`)) return;
-  socket.emit('host:switchBoard', to);
+  act('host:switchBoard', to);
 };
 const movePlayer = (e) => {
-  if (e.target.dataset.player && e.target.value !== '') socket.emit('host:movePlayer', { playerId: e.target.dataset.player, teamId: Number(e.target.value) });
+  if (e.target.dataset.player && e.target.value !== '') act('host:movePlayer', { playerId: e.target.dataset.player, teamId: Number(e.target.value) });
 };
 $('teams').onchange = movePlayer;
 $('unassigned').onchange = movePlayer;
 $('grid').onclick = (e) => {
   const t = e.target.closest('[data-cat]');
-  if (t && !t.disabled) socket.emit('host:pickTile', { cat: Number(t.dataset.cat), idx: Number(t.dataset.idx) });
+  if (t && !t.disabled) act('host:pickTile', { cat: Number(t.dataset.cat), idx: Number(t.dataset.idx) });
 };
 
 // Question
@@ -473,7 +520,7 @@ $('showAnswer').onclick = emit('host:showAnswer');
 $('backToBoard').onclick = emit('host:backToBoard');
 $('funnyRow').onclick = (e) => {
   const b = e.target.closest('[data-funny]');
-  if (b) socket.emit('host:funny', Number(b.dataset.funny));
+  if (b) act('host:funny', Number(b.dataset.funny));
 };
 
 // Reveal
@@ -490,29 +537,29 @@ $('timerStart').onclick = emit('host:timer', 'start');
 $('timerStop').onclick = emit('host:timer', 'stop');
 $('spTeams').onclick = (e) => {
   const b = e.target.closest('[data-team]');
-  if (b) socket.emit('host:sparkleTeam', Number(b.dataset.team));
+  if (b) act('host:sparkleTeam', Number(b.dataset.team));
 };
 $('spModes').onclick = (e) => {
   const b = e.target.closest('[data-mode]');
-  if (b && !b.disabled) socket.emit('host:sparkleMode', b.dataset.mode);
+  if (b && !b.disabled) act('host:sparkleMode', b.dataset.mode);
 };
 $('spLevels').onclick = (e) => {
   const b = e.target.closest('[data-level]');
-  if (b && !b.disabled) socket.emit('host:sparkleLevel', b.dataset.level);
+  if (b && !b.disabled) act('host:sparkleLevel', b.dataset.level);
 };
 $('spGuessed').onclick = emit('host:sparkleGuessed');
 $('spPlayers').onclick = (e) => {
   const b = e.target.closest('[data-player]');
-  if (b) socket.emit('host:sparklePerformer', b.dataset.player);
+  if (b) act('host:sparklePerformer', b.dataset.player);
 };
 $('spCard').onclick = (e) => {
   const b = e.target.closest('[data-points]');
-  if (b) socket.emit('host:sparklePoints', Number(b.dataset.points));
+  if (b) act('host:sparklePoints', Number(b.dataset.points));
 };
 $('spCustomGive').onclick = () => {
   const n = Math.round(Number($('spCustom').value));
   if ($('spCustom').value === '' || !Number.isFinite(n)) return $('spCustom').focus();
-  socket.emit('host:sparklePoints', n);
+  act('host:sparklePoints', n);
   $('spCustom').value = '';
 };
 
@@ -537,7 +584,7 @@ $('mute').textContent = fx.muted ? '🔇' : '🔊';
 
 $('scores').onclick = (e) => {
   const b = e.target.closest('[data-delta]');
-  if (b) socket.emit('host:adjustScore', { teamId: Number(b.dataset.team), delta: Number(b.dataset.delta) });
+  if (b) act('host:adjustScore', { teamId: Number(b.dataset.team), delta: Number(b.dataset.delta) });
 };
 
 function render() {
@@ -546,6 +593,19 @@ function render() {
   lastScreen = screen;
   for (const s of ['start', 'setup', 'lobby', 'board', 'question', 'reveal', 'bonus', 'sparkle', 'winner']) show(s, s === screen);
   show('howBtn', screen === 'setup' || screen === 'board');
+  // A paired phone runs the game: the TV becomes "show mode" (no host buttons) unless the host asks for them.
+  const nRemotes = state?.remotes || 0;
+  if (!nRemotes) forceControls = false;
+  document.body.classList.toggle('show-mode', nRemotes > 0 && !forceControls && screen !== 'setup');
+  show('remoteBadge', nRemotes > 0 && screen !== 'setup');
+  $('remoteBadge').textContent = nRemotes > 1 ? `📱 ${nRemotes} remotes connected` : '📱 Remote connected';
+  show('showControls', nRemotes > 0 && screen !== 'setup' && screen !== 'start');
+  $('showControls').textContent = forceControls ? 'Hide controls' : 'Show controls';
+  const canPair = !!state && nRemotes < 2;
+  show('pairMenu', canPair);
+  show('pairLobby', canPair);
+  show('revokeRemotes', nRemotes > 0);
+  if (state) renderPair();
   show('joinInfo', !!state && (screen === 'board' || screen === 'question'));
   // The address may shorten to fit; the room code never does.
   if (state) fill('joinInfo', 'Join:\u00a0', h('span', { class: 'join-url' }, state.joinUrl.replace(/^https?:\/\//, '')), h('span', { class: 'join-code' }, '\u00a0·\u00a0Room\u00a0', h('b', {}, state.code)));
@@ -675,6 +735,7 @@ function render() {
   if (screen === 'sparkle' && sp) {
     show('sparkleHelp', firstTime('sparkle', `${state.boardNo}-${state.used.length}`));
     const team = teamOf(sp.teamId);
+    $('spShow').textContent = sp.hasCard ? '' : team ? `${team.name} is up! The host is picking the game…` : 'The host is picking a team…';
     show('spSetup', !sp.hasCard);
     show('spCard', sp.hasCard);
 
@@ -732,7 +793,7 @@ function render() {
     h('div', { class: 'score', data: { scoreTeam: t.id, pts: t.score }, vars: { '--c': t.color } },
       h('div', { class: 'score-name' }, t.name),
       h('div', { class: 'score-pts' }, t.score),
-      h('div', {},
+      h('div', { class: 'host-only' },
         h('button', { class: 'secondary', data: { team: t.id, delta: -100 } }, '−'), ' ',
         h('button', { class: 'secondary', data: { team: t.id, delta: 100 } }, '+')))));
 

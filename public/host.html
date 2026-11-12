@@ -11,16 +11,19 @@
   <header>
     <h1 class="logo"><img class="logo-mark" src="/logo.svg" alt=""><span class="logo-word">Buzz<span>In</span></span></h1>
     <div id="joinInfo" class="join-info hidden"></div>
+    <span id="remoteBadge" class="remote-badge hidden">📱 Remote connected</span>
     <div class="row header-actions" style="margin:0">
-      <button id="switchBoard" class="secondary hidden"></button>
-      <button id="finishGame" class="secondary hidden">🏁 Finish game</button>
-      <button id="toSparkle" class="secondary hidden">✨ Sparkle Round</button>
-      <button id="toLobby" class="secondary hidden">Lobby / teams</button>
+      <button id="switchBoard" class="secondary host-only hidden"></button>
+      <button id="finishGame" class="secondary host-only hidden">🏁 Finish game</button>
+      <button id="toSparkle" class="secondary host-only hidden">✨ Sparkle Round</button>
+      <button id="toLobby" class="secondary host-only hidden">Lobby / teams</button>
       <button id="howBtn" class="secondary hidden" title="How to play">❓ How to play</button>
       <button id="mute" class="secondary" title="Sound on/off">🔊</button>
       <div class="menu-wrap">
         <button id="menuBtn" class="secondary" title="More" aria-haspopup="true" aria-expanded="false">⋯</button>
         <div id="menu" class="menu hidden" role="menu">
+          <button id="pairMenu" class="menu-item hidden" role="menuitem">📱 Use phone as remote</button>
+          <button id="revokeRemotes" class="menu-item hidden" role="menuitem">Disconnect remote(s)</button>
           <button id="newGame" class="menu-item" role="menuitem">New game</button>
         </div>
       </div>
@@ -117,6 +120,7 @@
       </label>
       <button id="makeTeams">Make random teams</button>
       <button id="toBoard" class="hidden">Go to the board →</button>
+      <button id="pairLobby" class="secondary">📱 Use phone as remote</button>
     </div>
     <div id="teams" class="teams"></div>
   </section>
@@ -126,8 +130,8 @@
     <div id="boardTitle" class="board-title"></div>
     <div id="boardDone" class="board-done hidden">
       <span id="boardDoneText"></span>
-      <button id="nextBoard" class="big hidden">Play Board 2 (Double!) →</button>
-      <button id="finishBig" class="big hidden">🏆 See the winner</button>
+      <span class="host-only"><button id="nextBoard" class="big hidden">Play Board 2 (Double!) →</button>
+      <button id="finishBig" class="big hidden">🏆 See the winner</button></span>
     </div>
     <div id="grid" class="grid"></div>
   </section>
@@ -140,16 +144,16 @@
     <div id="qDoubleHelp" class="explain hidden"></div>
     <div class="row controls">
       <span id="buzzBadge" class="badge closed">Closed</span>
-      <button id="openBuzzers">Open buzzers</button>
-      <button id="correct" class="good">✓ Correct</button>
-      <button id="wrong" class="bad">✕ Wrong</button>
+      <button class="host-only" id="openBuzzers">Open buzzers</button>
+      <button id="correct" class="host-only good">✓ Correct</button>
+      <button id="wrong" class="host-only bad">✕ Wrong</button>
       <span class="spacer"></span>
-      <button id="peek" class="secondary" title="Press and hold to see the answer (it shows on the TV while held)">👁 Hold to peek</button>
-      <button id="showAnswer" class="secondary">Show answer</button>
-      <button id="backToBoard" class="secondary">Back to board</button>
+      <button id="peek" class="host-only secondary" title="Press and hold to see the answer (it shows on the TV while held)">👁 Hold to peek</button>
+      <button id="showAnswer" class="host-only secondary">Show answer</button>
+      <button id="backToBoard" class="host-only secondary">Back to board</button>
     </div>
-    <div id="peekBox" class="peek hidden"></div>
-    <div class="row funny-row" id="funnyRow"></div>
+    <div id="peekBox" class="peek host-only hidden"></div>
+    <div class="row funny-row host-only" id="funnyRow"></div>
     <div id="qText" class="qtext"></div>
 
     <ol id="order" class="order"></ol>
@@ -161,7 +165,7 @@
     <div class="reveal-label">The answer</div>
     <div id="revealAnswer" class="reveal-answer"></div>
     <div id="revealFact" class="qfact hidden"></div>
-    <div class="row"><button id="revealNext" class="big"></button></div>
+    <div class="row host-only"><button id="revealNext" class="big"></button></div>
   </section>
 
   <!-- Bonus challenge (after a correct answer) -->
@@ -169,7 +173,7 @@
     <div class="card-type" id="bonusFor"></div>
     <div id="bonusHelp" class="explain hidden">Do this challenge and the host gives your team the bonus points. Skipping is fine.</div>
     <div class="qtext" id="bonusText"></div>
-    <div class="row">
+    <div class="row host-only">
       <button id="bonusDone"></button>
       <button id="bonusSkip" class="secondary">Skip bonus</button>
     </div>
@@ -179,11 +183,12 @@
   <section id="sparkle" class="hidden">
     <div class="row">
       <h2 class="sparkle-title" style="margin-right:auto">✨ Sparkle Round ✨</h2>
-      <button id="skipSparkle" class="secondary">Skip Sparkle</button>
+      <button id="skipSparkle" class="secondary host-only">Skip Sparkle</button>
     </div>
     <div id="sparkleHelp" class="explain hidden">A party-game break: one player draws, acts or mimics, their team guesses, and the host gives points.</div>
 
-    <div id="spSetup">
+    <p id="spShow" class="show-only sp-show"></p>
+    <div id="spSetup" class="host-only">
       <h3>1. Which team?</h3>
       <div id="spTeams" class="row"></div>
       <h3>2. Which mode?</h3>
@@ -203,12 +208,12 @@
       <div class="card-type" id="spType"></div>
       <div class="qtext" id="spText"></div>
       <div class="timer" id="spTimer"></div>
-      <div class="row">
+      <div class="row host-only">
         <button id="timerStart">▶ Start timer</button>
         <button id="timerStop" class="secondary">⏸ Stop timer</button>
         <button id="skipCard" class="secondary">Skip card</button>
       </div>
-      <div class="row">
+      <div class="row host-only">
         <span class="muted">Points for <span id="spTeamName"></span>:</span>
         <button id="spGuessed" class="hidden">🎉 Guessed!</button>
         <span id="spPresets" class="row" style="margin:0">
@@ -228,12 +233,34 @@
     <div class="trophy">🏆</div>
     <div id="winnerName" class="hero-title"></div>
     <ol id="ranking" class="ranking"></ol>
-    <div class="row center">
+    <div class="row center host-only">
       <button id="winnerBack" class="secondary">← Back to the board</button>
       <button id="winnerNew" class="big">New game</button>
     </div>
   </section>
   <div id="emojiRain" class="emoji-rain"></div>
+
+  <!-- Pair a phone as the host remote -->
+  <div id="pair" class="howto hidden" role="dialog" aria-modal="true" aria-labelledby="pairTitle">
+    <div class="howto-card pair-card">
+      <div class="howto-head">
+        <h2 id="pairTitle">📱 Use your phone as the remote</h2>
+        <button id="pairClose" class="secondary" title="Close">✕</button>
+      </div>
+      <div id="pairScan">
+        <img id="pairQr" alt="QR code to pair your phone">
+        <p class="pair-big">Scan with YOUR phone</p>
+        <p class="muted">Keep it to yourself: the remote shows the answers. <span id="pairLeft"></span></p>
+      </div>
+      <div id="pairAsk" class="hidden">
+        <p class="pair-big">Allow this phone to control the game?</p>
+        <p class="muted">Only allow it if it's your phone (or your co-host's).</p>
+        <div class="row center"><button id="pairAllow" class="big">Allow</button><button id="pairDeny" class="secondary big">Deny</button></div>
+      </div>
+      <p id="pairMsg" class="muted"></p>
+    </div>
+  </div>
+  <button id="showControls" class="show-controls hidden" title="Show the host controls on this screen too">Show controls</button>
 
   <!-- How to play: one screen; "Show on TV" makes it big for everyone -->
   <div id="howto" class="howto hidden" role="dialog" aria-modal="true" aria-labelledby="howTitle">

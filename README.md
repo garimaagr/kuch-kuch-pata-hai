@@ -45,6 +45,16 @@ It prints something like:
    - Tap **▶ Start timer** when the performer is ready (60 seconds). **⏸ Stop timer** pauses it.
    - Give **+25 / +50 / +100**, any amount in the box, or **No points**. Then you're back on the board.
 
+## 📱 Use your phone as the remote
+
+The host page is also what's on the TV, so everyone can see the buttons and "Hold to peek". With a remote you run the game from your phone, and the TV shows only the show: the question, the buzz order, the answer once you reveal it, and the scores. It's optional: without it, everything works as above.
+
+1. On the TV, tap **📱 Use phone as remote** (in the lobby or the **⋯** menu).
+2. Scan the QR with **your** phone. The code works once and expires in 2 minutes.
+3. Click **Allow** on the TV. Nothing is controlled until you do, so if someone else scanned it first, click **Deny**.
+
+Your phone now shows the answer and fun fact, the buttons, the Sparkle secret word and the scores with − / +. Keep it to yourself. Up to 2 phones can be remotes (for a co-host). If your phone dies, tap **Show controls** in the TV's corner. **⋯ → Disconnect remote(s)** on the TV logs every remote out at once, and the TV gets its buttons back. Starting a new game does the same.
+
 ## ✨ Make your own (any topic, made with Claude)
 
 1. Click **New game**, then the **✨ Make your own** card.

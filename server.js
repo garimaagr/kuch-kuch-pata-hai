@@ -9,6 +9,7 @@ const QRCode = require('qrcode');
 const buzz = require('./buzz');
 const { makeLimiter, cleanText } = require('./limits');
 const { validatePack, defaultCategories, checkUploadedText } = require('./pack');
+const remotes = require('./remote');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -30,6 +31,7 @@ const MAX_MESSAGE_BYTES = 300 * 1024;
 const HOST_PIN = process.env.HOST_PIN || '';
 const roomCreation = makeLimiter(5, 10 * 60 * 1000); // 5 new games per IP per 10 minutes
 const packChecks = makeLimiter(10, 10 * 60 * 1000); // 10 "Make your own" pack checks per room (or IP) per 10 minutes
+const pairAttempts = makeLimiter(5, 60 * 1000); // 5 remote pairing attempts per room (and per network) per minute
 
 const app = express();
 const server = http.createServer(app);
@@ -50,6 +52,7 @@ app.use(express.static(pub));
 app.get('/', (req, res) => res.redirect('/host'));
 app.get('/host', (req, res) => res.sendFile(path.join(pub, 'host.html')));
 app.get('/join/:code', (req, res) => res.sendFile(path.join(pub, 'join.html')));
+app.get('/remote', (req, res) => res.sendFile(path.join(pub, 'remote.html')));
 
 // The laptop's address on the home wifi, e.g. 192.168.1.20. Phones use it to reach the game.
 // Skips VPN, virtual-machine and Docker adapters. Returns null when not on a network.
@@ -131,6 +134,9 @@ function hostState(room) {
     reveal: room.reveal,
     bonus: room.bonus,
     deckLeft: Object.fromEntries(DECK_KEYS.map((k) => [k, room.decks[k].length - room.drawn[k].length])),
+    version: room.version, // host actions must quote this, so a double tap from two devices counts once
+    remotes: room.remotes.length,
+    pairing: remotes.pairingStatus(room),
   };
 }
 
@@ -172,6 +178,7 @@ function send(room) {
   if (card && SECRET_MODES.includes(room.sparkle.mode)) {
     const p = room.players.get(room.sparkle.performerId);
     if (p?.socketId) io.to(p.socketId).emit('secret', card);
+    io.to(room.code + ':remote').emit('secret', card); // the host judges from the remote
   }
   io.to(room.code).emit('state', publicState(room));
   io.to(room.code + ':host').emit('state', hostState(room));
@@ -355,10 +362,36 @@ function makeTeams(room, count) {
   room.sparkle = null;
 }
 
+// A paired phone: gets the host view (answers included) and the Sparkle secret word.
+function becomeRemote(sock, room, remoteId) {
+  sock.data = { role: 'remote', code: room.code, remoteId };
+  sock.join(room.code + ':host');
+  sock.join(room.code + ':remote');
+}
+
+// A revoked remote: tell it, and stop sending it the host view.
+function dropRemote(sock, code) {
+  sock.emit('revoked');
+  sock.leave(code + ':host');
+  sock.leave(code + ':remote');
+  sock.data = {};
+}
+
 // ---- Sockets ----
 io.on('connection', (socket) => {
-  // Host controls only work on a socket that proved it knows the room's host secret.
-  const hostRoom = () => (socket.data.role === 'host' ? rooms.get(socket.data.code) : null);
+  // Host controls work on a socket that proved it knows the room's host secret (the TV),
+  // or on a paired remote whose token hasn't been revoked. Players can never send them.
+  const hostRoom = () => {
+    const room = rooms.get(socket.data.code);
+    if (!room) return null;
+    if (socket.data.role === 'host') return room;
+    if (socket.data.role === 'remote') {
+      if (remotes.remoteById(room, socket.data.remoteId)) return room;
+      dropRemote(socket, room.code); // revoked: this socket can't act any more
+    }
+    return null;
+  };
+  const tvRoom = () => (socket.data.role === 'host' ? rooms.get(socket.data.code) : null); // pairing is TV-only
 
   // Drop events beyond EVENTS_PER_SECOND on this socket.
   let windowStart = 0;
@@ -378,6 +411,22 @@ io.on('connection', (socket) => {
     }
   });
   const reply = (cb, value) => { if (typeof cb === 'function') cb(value); };
+
+  // A game action from the TV or a remote. It must quote the current state version: if two devices
+  // tap Correct at the same moment, the second one carries an old version and is ignored.
+  // (+5 and the score − / + buttons are meant to be tapped repeatedly, so they skip the check.)
+  const REPEATABLE = new Set(['host:funny', 'host:adjustScore']);
+  const act = (event, fn) => on(event, (data, version) => {
+    const room = hostRoom();
+    if (!room) return;
+    if (!REPEATABLE.has(event) && version !== room.version) {
+      socket.emit('state', hostState(room)); // catch this device up; the tap is dropped
+      return;
+    }
+    room.version++;
+    fn(data);
+    send(room);
+  });
 
   // The theme cards for the setup screen.
   on('host:packs', (cb) => reply(cb, packSummaries()));
@@ -442,7 +491,9 @@ io.on('connection', (socket) => {
       board: boards[0], used: null, current: null, showAnswer: false,
       finished: 0, sparkleDue: false, reveal: null, bonus: null,
       decks, drawn: Object.fromEntries(DECK_KEYS.map((k) => [k, []])), sparkle: null,
+      version: 0,
     };
+    remotes.initRemotes(room);
     room.used = room.usedBy[0];
     room.qr = await QRCode.toDataURL(joinUrl, { margin: 1, width: 320 });
     // The host's previous game (if it proves it ran it) ends now, so its old link can't be rejoined by mistake.
@@ -467,14 +518,14 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:makeTeams', (count) => {
+  act('host:makeTeams', (count) => {
     const room = hostRoom();
     if (!room) return;
     makeTeams(room, count);
     send(room);
   });
 
-  on('host:movePlayer', ({ playerId, teamId }) => {
+  act('host:movePlayer', ({ playerId, teamId }) => {
     const room = hostRoom();
     const p = room?.players.get(playerId);
     if (!p || !room.teams.some((t) => t.id === teamId)) return;
@@ -482,14 +533,14 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:openBuzzers', () => {
+  act('host:openBuzzers', () => {
     const room = hostRoom();
     if (!room) return;
     buzz.openBuzzers(room.buzz);
     send(room);
   });
 
-  on('host:resetBuzzers', () => {
+  act('host:resetBuzzers', () => {
     const room = hostRoom();
     if (!room) return;
     buzz.resetBuzz(room.buzz);
@@ -497,7 +548,7 @@ io.on('connection', (socket) => {
   });
 
   // ---- Board and scoring ----
-  on('host:screen', (screen) => {
+  act('host:screen', (screen) => {
     const room = hostRoom();
     if (!room || !['lobby', 'board', 'sparkle', 'winner'].includes(screen) || room.current || room.reveal || room.bonus) return;
     if (screen === 'sparkle' && !room.settings.sparkleEvery) return; // Sparkle is off for this game
@@ -507,7 +558,7 @@ io.on('connection', (socket) => {
   });
 
   // Switch boards; scores and each board's used tiles are kept.
-  on('host:switchBoard', (n) => {
+  act('host:switchBoard', (n) => {
     const room = hostRoom();
     if (!room || room.current || room.reveal || room.bonus || !room.boards[n]) return;
     room.boardNo = n;
@@ -516,7 +567,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:pickTile', ({ cat, idx } = {}) => {
+  act('host:pickTile', ({ cat, idx } = {}) => {
     const room = hostRoom();
     if (!room || room.current || room.reveal || room.bonus || !room.board[cat]?.questions[idx] || room.used.includes(`${cat}-${idx}`)) return;
     // The hidden Double: worth 2x if right, costs 2x if wrong.
@@ -526,7 +577,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:correct', () => {
+  act('host:correct', () => {
     const room = hostRoom();
     const turn = room && buzz.currentTurn(room.buzz);
     const team = turn && room.teams.find((t) => t.id === turn.teamId);
@@ -541,7 +592,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:wrong', () => {
+  act('host:wrong', () => {
     const room = hostRoom();
     const turn = room && buzz.currentTurn(room.buzz);
     const team = turn && room.teams.find((t) => t.id === turn.teamId);
@@ -551,7 +602,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:showAnswer', () => {
+  act('host:showAnswer', () => {
     const room = hostRoom();
     const q = room && currentQuestion(room);
     if (!q) return;
@@ -561,7 +612,7 @@ io.on('connection', (socket) => {
   });
 
   // From the reveal screen: on to the bonus, or back to the board.
-  on('host:revealNext', () => {
+  act('host:revealNext', () => {
     const room = hostRoom();
     const r = room?.reveal;
     if (!r) return;
@@ -571,7 +622,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:backToBoard', () => {
+  act('host:backToBoard', () => {
     const room = hostRoom();
     if (!room?.current) return;
     finishQuestion(room, false); // skipped without showing the answer: doesn't count toward the Sparkle Round
@@ -580,7 +631,7 @@ io.on('connection', (socket) => {
   });
 
   // 😂 +5 for a funny wrong answer. Any team, any number of times.
-  on('host:funny', (teamId) => {
+  act('host:funny', (teamId) => {
     const room = hostRoom();
     const team = room?.teams.find((t) => t.id === teamId);
     if (!team || !room.current) return;
@@ -589,7 +640,7 @@ io.on('connection', (socket) => {
     flash(room, team.id, '+5 😂');
   });
 
-  on('host:bonus', (done) => {
+  act('host:bonus', (done) => {
     const room = hostRoom();
     const b = room?.bonus;
     if (!b) return;
@@ -600,7 +651,7 @@ io.on('connection', (socket) => {
     if (done) flash(room, b.teamId, `+${b.points} ⭐`);
   });
 
-  on('host:adjustScore', ({ teamId, delta } = {}) => {
+  act('host:adjustScore', ({ teamId, delta } = {}) => {
     const room = hostRoom();
     const team = room?.teams.find((t) => t.id === teamId);
     if (!team || !Number.isFinite(delta) || Math.abs(delta) > 1000) return;
@@ -616,7 +667,7 @@ io.on('connection', (socket) => {
     return room?.screen === 'sparkle' && room.sparkle ? room : null;
   };
 
-  on('host:sparkleTeam', (teamId) => {
+  act('host:sparkleTeam', (teamId) => {
     const room = sparkleRoom();
     if (!room || room.sparkle.cardIdx != null || !room.teams.some((t) => t.id === teamId)) return;
     room.sparkle.teamId = teamId;
@@ -624,7 +675,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:sparkleMode', (mode) => {
+  act('host:sparkleMode', (mode) => {
     const room = sparkleRoom();
     if (!room || room.sparkle.cardIdx != null || !room.settings.modes.includes(mode)) return;
     room.sparkle.mode = mode;
@@ -634,7 +685,7 @@ io.on('connection', (socket) => {
   });
 
   // Draw only: the team picks a difficulty.
-  on('host:sparkleLevel', (level) => {
+  act('host:sparkleLevel', (level) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     if (!s || s.cardIdx != null || s.mode !== 'draw' || !Object.hasOwn(DRAW_LEVELS, level)) return;
@@ -643,7 +694,7 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:sparklePerformer', (playerId) => {
+  act('host:sparklePerformer', (playerId) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     const p = room?.players.get(playerId);
@@ -653,14 +704,14 @@ io.on('connection', (socket) => {
     send(room);
   });
 
-  on('host:skipCard', () => {
+  act('host:skipCard', () => {
     const room = sparkleRoom();
     if (!room?.sparkle.performerId) return;
     drawCard(room);
     send(room);
   });
 
-  on('host:timer', (action) => {
+  act('host:timer', (action) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     if (!s || s.cardIdx == null) return;
@@ -685,7 +736,7 @@ io.on('connection', (socket) => {
   }
 
   // The host chooses the points (preset buttons or a custom amount), then it's back to the board.
-  on('host:sparklePoints', (points) => {
+  act('host:sparklePoints', (points) => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     points = Math.round(Number(points));
@@ -694,11 +745,92 @@ io.on('connection', (socket) => {
   });
 
   // Draw: "Guessed" adds the card's difficulty points automatically.
-  on('host:sparkleGuessed', () => {
+  act('host:sparkleGuessed', () => {
     const room = sparkleRoom();
     const s = room?.sparkle;
     if (!s || s.mode !== 'draw' || s.cardIdx == null) return;
     awardSparkle(room, DRAW_LEVELS[s.level]);
+  });
+
+  // ---- Host remote (pairing) ----
+  // The TV asks for a pairing QR. The code is in the URL's #fragment, so it's never sent in a page request.
+  on('host:pairStart', async (cb) => {
+    const room = tvRoom();
+    if (!room) return reply(cb, { ok: false });
+    if (!pairAttempts.allow('room:' + room.code)) return reply(cb, { ok: false, error: 'Too many pairing attempts. Wait a minute and try again.' });
+    const res = remotes.startPairing(room);
+    if (!res.ok) return reply(cb, res);
+    const url = `${new URL(room.joinUrl).origin}/remote#pair=${res.code}`;
+    reply(cb, { ok: true, qr: await QRCode.toDataURL(url, { margin: 1, width: 320 }), url, expiresAt: res.expiresAt });
+    send(room);
+  });
+
+  on('host:pairCancel', () => {
+    const room = tvRoom();
+    if (!room?.pairing) return;
+    const res = remotes.decidePairing(room, false);
+    if (res.socketId) io.to(res.socketId).emit('pairDenied');
+    send(room);
+  });
+
+  // The host clicked Allow or Deny on the TV.
+  on('host:pairDecision', (allow) => {
+    const room = tvRoom();
+    if (!room?.pairing?.claimedBy) return;
+    const res = remotes.decidePairing(room, allow === true);
+    const phone = res.socketId && io.sockets.sockets.get(res.socketId);
+    if (res.allowed && phone) {
+      becomeRemote(phone, room, res.id);
+      phone.emit('paired', { code: room.code, token: res.token });
+    } else if (res.allowed) {
+      remotes.removeRemote(room, res.id); // the phone left while waiting
+    } else if (phone) phone.emit('pairDenied');
+    send(room);
+  });
+
+  // "Disconnect remote(s)" on the TV: every remote token stops working now.
+  on('host:revokeRemotes', () => {
+    const room = tvRoom();
+    if (!room) return;
+    remotes.revokeAll(room);
+    io.to(room.code + ':remote').emit('revoked');
+    io.in(room.code + ':remote').socketsLeave(room.code + ':host');
+    io.in(room.code + ':remote').socketsLeave(room.code + ':remote');
+    send(room);
+  });
+
+  // A phone scanned the QR. It waits (no control) until the host clicks Allow on the TV.
+  on('remote:pair', (code, cb) => {
+    if (!pairAttempts.allow('ip:' + clientIp(socket))) return reply(cb, { ok: false, error: 'Too many tries. Wait a minute.' });
+    const room = [...rooms.values()].find((r) => r.pairing && remotes.sameToken(r.pairing.code, code));
+    if (!room) return reply(cb, { ok: false, error: 'This pairing code is old or wrong. Tap 📱 on the TV for a new one.' });
+    if (!pairAttempts.allow('room:' + room.code)) return reply(cb, { ok: false, error: 'Too many tries. Wait a minute.' });
+    const res = remotes.claimPairing(room, code, socket.id);
+    if (!res.ok) {
+      const why = { used: 'This code was already used.', expired: 'This code has expired.', full: 'This game already has 2 remotes.' }[res.error] || 'This pairing code is wrong.';
+      return reply(cb, { ok: false, error: `${why} Tap 📱 on the TV for a new one.` });
+    }
+    reply(cb, { ok: true });
+    send(room); // the TV now asks "Allow this phone?"
+  });
+
+  // A paired phone coming back (reload, or waking up): its saved token proves it's still allowed.
+  on('remote:resume', ({ code, token } = {}, cb) => {
+    const room = rooms.get(String(code || '').toUpperCase());
+    const r = room && remotes.remoteByToken(room, token);
+    if (!r) return reply(cb, { ok: false });
+    becomeRemote(socket, room, r.id);
+    reply(cb, { ok: true });
+    send(room);
+  });
+
+  // "Disconnect this remote" on the phone.
+  on('remote:leave', () => {
+    const room = rooms.get(socket.data.code);
+    if (socket.data.role !== 'remote' || !room) return;
+    remotes.removeRemote(room, socket.data.remoteId);
+    dropRemote(socket, room.code);
+    send(room);
   });
 
   on('player:peek', (code, cb) => {

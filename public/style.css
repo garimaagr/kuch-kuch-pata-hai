@@ -536,3 +536,64 @@ button.attention { border-color: var(--accent); color: var(--accent); }
 .theme-title { font-size: 1.4rem; }
 #customise .opt { padding: 0.3rem 0; }
 #customise .segbtn, .cat-chip { padding: 0.3em 0.7em; font-size: 0.88rem; }
+
+/* ---- Host remote: TV "show mode" and pairing ---- */
+.show-only { display: none; }
+body.show-mode .show-only { display: block; }
+body.show-mode .host-only { display: none !important; }
+body.show-mode .tile { pointer-events: none; }
+.sp-show { font-size: clamp(1.4rem, 3vw, 2.2rem); font-weight: 800; color: var(--muted); margin-top: 2rem; }
+.remote-badge { flex: none; font-size: 0.85rem; font-weight: 600; color: #4ade80; background: #0f2a1a; border: 1px solid #1f5a35; border-radius: 999px; padding: 0.25em 0.75em; white-space: nowrap; }
+.show-controls { position: fixed; left: 0.6rem; bottom: 0.6rem; z-index: 75; font-size: 0.75rem; padding: 0.3em 0.7em; background: transparent; color: var(--muted); border: 1px solid var(--line); opacity: 0.5; }
+.show-controls:hover { opacity: 1; filter: none; }
+body:has(#scores:not(.hidden)) .show-controls { bottom: 7.4rem; } /* sit above the scores bar */
+.pair-card { width: min(460px, 100%); text-align: center; }
+.pair-card .howto-head { text-align: left; }
+#pairQr { width: 240px; height: 240px; background: #fff; border-radius: 12px; padding: 8px; margin: 0.6rem auto 0; display: block; }
+.pair-big { font-size: 1.4rem; font-weight: 800; margin: 0.8rem 0 0.3rem; }
+#pairAsk .row { margin-top: 1rem; }
+
+/* ---- Host remote (phone) ---- */
+body.remote { padding: 0 0 2rem; min-height: 100vh; }
+.r-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.9rem; background: rgba(15, 11, 31, 0.95); border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
+.r-top .logo { font-size: 1.15rem; }
+.r-top .logo-mark { width: 1.6rem; height: 1.6rem; }
+.r-room { flex: 1; text-align: right; color: var(--muted); font-weight: 600; font-size: 0.9rem; }
+.r-message { text-align: center; padding: 22vh 1.5rem 0; font-size: 1.2rem; line-height: 1.4; }
+.r-msg-big { font-size: 3rem; margin-bottom: 0.6rem; }
+body.remote main { padding: 0.8rem 0.9rem; max-width: 640px; margin: 0 auto; }
+.r-scores { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.3rem; }
+.r-score { flex: 1; min-width: 7.5rem; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 12px; padding: 0.35rem 0.5rem; text-align: center; }
+.r-score-name { font-size: 0.8rem; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r-score-row { display: flex; align-items: center; justify-content: space-between; gap: 0.3rem; }
+.r-score-row b { font-size: 1.3rem; }
+.r-score-row button { padding: 0.2em 0.75em; font-size: 1.1rem; }
+#rStage { margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.7rem; }
+#rStage h2, #rStage h3 { margin: 0.2rem 0 0; }
+#rStage button { font-size: 1.05rem; padding: 0.8em 1em; border-radius: 12px; }
+#rStage .r-big { width: 100%; font-size: 1.15rem; padding: 0.95em 1em; }
+.r-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.r-row select, .r-row input { width: auto; flex: 1; margin: 0; padding: 0.75em; font-size: 1rem; }
+.r-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+body.remote button:disabled { opacity: 0.35; filter: grayscale(0.6); }
+.r-sub { color: var(--muted); }
+.r-sub b { color: var(--text); }
+.r-q { font-size: 1.1rem; line-height: 1.4; margin: 0; }
+.r-answer { background: #0f2a1a; border: 1px solid #1f5a35; border-radius: 14px; padding: 0.7rem 0.9rem; }
+.r-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #86c79c; }
+.r-answer-text { font-size: 1.7rem; font-weight: 900; color: #4ade80; line-height: 1.15; margin-top: 0.15rem; }
+.r-fact { margin-top: 0.4rem; color: #cfe9d7; font-size: 0.95rem; }
+.r-order { margin: 0; padding-left: 1.4rem; font-size: 1.15rem; }
+.r-order li { margin: 0.2rem 0; }
+.r-order .locked { text-decoration: line-through; opacity: 0.5; }
+.r-order .turn { font-weight: 800; }
+#rStage .badge.open { text-align: center; padding: 0.7em; font-size: 1rem; }
+#rStage .r-funny button { flex: 1; font-size: 0.9rem; padding: 0.6em 0.7em; }
+.r-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 0.3rem; }
+.r-cat { font-size: 0.68rem; font-weight: 700; text-align: center; color: var(--muted); line-height: 1.15; padding: 0.2rem 0.1rem; display: flex; align-items: flex-end; justify-content: center; min-height: 2.4rem; overflow: hidden; }
+#rStage .r-tile { padding: 0.75em 0; font-size: 1rem; font-weight: 800; border-radius: 9px; }
+#rStage .r-tile:disabled { background: var(--surface); color: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.r-wait { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.r-team { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 0.5rem 0.7rem; }
+#rStage .timer { font-size: 2.6rem; text-align: center; }
+#rStage .pick { font-size: 1rem; }

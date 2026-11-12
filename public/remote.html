@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>BuzzIn — Remote</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="remote">
+  <header class="r-top">
+    <div class="logo"><img class="logo-mark" src="/logo.svg" alt=""><span class="logo-word">Buzz<span>In</span></span></div>
+    <div id="rRoom" class="r-room"></div>
+    <div class="menu-wrap">
+      <button id="rMenuBtn" class="secondary" aria-haspopup="true" aria-expanded="false" title="More">⋯</button>
+      <div id="rMenu" class="menu hidden" role="menu">
+        <button id="rSwitch" class="menu-item hidden" role="menuitem"></button>
+        <button id="rSparkle" class="menu-item hidden" role="menuitem">✨ Sparkle Round</button>
+        <button id="rLobby" class="menu-item" role="menuitem">Lobby / teams</button>
+        <button id="rEnd" class="menu-item" role="menuitem">🏁 End game (show winner)</button>
+        <button id="rLeave" class="menu-item" role="menuitem">Disconnect this remote</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Before pairing, or when it fails -->
+  <div id="rMessage" class="r-message hidden"></div>
+
+  <main id="rGame" class="hidden">
+    <div id="rScores" class="r-scores"></div>
+    <div id="rStage"></div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/remote.js"></script>
+</body>
+</html>
