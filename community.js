@@ -153,7 +153,81 @@ async function submitPack(input, { ip = 'unknown', now = Date.now() } = {}) {
   }
 }
 
+// ---- Public: only approved boards, ever ----
+const PAGE_SIZE = 20;
+const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s ?? ''));
+const tagSlug = (s) => (typeof s === 'string' && /^[a-z0-9-]{1,40}$/.test(s) ? s : null);
+
+// Filters shared by the list and 🎲 Surprise me: $1 tag slug, $2 search text, $3 kid-friendly only.
+const FILTER = `p.status = 'approved'
+  AND ($1::text IS NULL OR EXISTS (SELECT 1 FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = p.id AND t.slug = $1))
+  AND ($2::text IS NULL OR position(lower($2) in lower(p.name)) > 0)
+  AND (NOT $3::boolean OR p.kid_friendly)`;
+const filterValues = ({ tag, q, kid } = {}) => [tagSlug(tag), cleanText(q ?? '', 40) || null, kid === true || kid === '1' || kid === 'true'];
+const TAGS_OF = `COALESCE((SELECT json_agg(json_build_object('slug', t.slug, 'name', t.name, 'emoji', t.emoji) ORDER BY lower(t.name))
+  FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = p.id), '[]')`;
+
+const card = (r) => ({ id: r.id, name: r.name, emoji: r.emoji, madeBy: r.made_by, playCount: r.play_count, kidFriendly: r.kid_friendly, tags: r.tags });
+
+// Tags with at least 1 approved board (with counts), and how many approved boards there are.
+async function publicTags() {
+  const [tags, total] = await Promise.all([
+    db.query(`SELECT t.slug, t.name, t.emoji, count(*)::int AS boards
+                FROM tags t JOIN pack_tags pt ON pt.tag_id = t.id JOIN packs p ON p.id = pt.pack_id AND p.status = 'approved'
+               GROUP BY t.id ORDER BY boards DESC, lower(t.name)`),
+    db.query("SELECT count(*)::int AS n FROM packs WHERE status = 'approved'"),
+  ]);
+  return { total: total.rows[0].n, tags: tags.rows };
+}
+
+// One page (20) of approved boards: most played first.
+async function listBoards(filters = {}) {
+  const page = Math.min(Math.max(Number.parseInt(filters.page, 10) || 0, 0), 500);
+  const { rows } = await db.query(
+    `SELECT p.id, p.name, p.emoji, p.made_by, p.play_count, p.kid_friendly, ${TAGS_OF} AS tags
+       FROM packs p WHERE ${FILTER}
+      ORDER BY p.play_count DESC, p.reviewed_at DESC NULLS LAST, p.id
+      LIMIT ${PAGE_SIZE + 1} OFFSET $4`,
+    [...filterValues(filters), page * PAGE_SIZE],
+  );
+  return { boards: rows.slice(0, PAGE_SIZE).map(card), more: rows.length > PAGE_SIZE, page };
+}
+
+// 🎲 A random approved board that matches the tag and kid-friendly filters. null if none.
+async function randomBoard(filters = {}) {
+  const { rows } = await db.query(`SELECT p.id FROM packs p WHERE ${FILTER} ORDER BY random() LIMIT 1`, filterValues({ tag: filters.tag, kid: filters.kid }));
+  return rows[0]?.id || null;
+}
+
+// An approved board rebuilt as a pack (not yet validated: callers run validatePack), or null.
+// Pending, rejected and archived boards are "not found".
+async function loadPack(id) {
+  if (!isUuid(id)) return null;
+  const { rows } = await db.query(`SELECT p.*, ${TAGS_OF} AS tags FROM packs p WHERE p.id = $1 AND p.status = 'approved'`, [id]);
+  const p = rows[0];
+  if (!p) return null;
+  const cats = (await db.query('SELECT board_index, name, description, questions FROM categories WHERE pack_id = $1 ORDER BY board_index, position', [id])).rows;
+  const pack = {
+    format: 'buzz-pack-v2', name: p.name,
+    ...(p.emoji ? { emoji: p.emoji } : {}),
+    ...(p.teams ? { teams: p.teams } : {}),
+    boards: (p.board_names || []).map((name, bi) => ({
+      name,
+      categories: cats.filter((c) => c.board_index === bi).map((c) => ({ name: c.name, ...(c.description ? { note: c.description } : {}), questions: c.questions })),
+    })),
+    ...(p.sparkle ? { sparkle: p.sparkle } : {}),
+  };
+  return { pack, meta: { id: p.id, madeBy: p.made_by, kidFriendly: p.kid_friendly, playCount: p.play_count, tags: p.tags } };
+}
+
+// Starting a game with a community board counts one play (the caller does this once per new room).
+async function countPlay(id) {
+  if (!isUuid(id)) return;
+  await db.query("UPDATE packs SET play_count = play_count + 1 WHERE id = $1 AND status = 'approved'", [id]);
+}
+
 module.exports = {
+  PAGE_SIZE, isUuid, publicTags, listBoards, randomBoard, loadPack, countPlay,
   PER_CODE_PER_DAY, PER_IP_PER_DAY, MAX_PENDING, MADE_BY_MAX,
   newShareCode, createShareCode, findShareCode, hashCode, normCode, contentHash, cleanMadeBy, submitPack, pruneLimits,
 };

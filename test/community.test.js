@@ -138,3 +138,81 @@ test('submitting for review', { skip: !URL && 'set TEST_DATABASE_URL to run' }, 
     assert.strictEqual((await submit(pack(), { shareCode: fresh.code }, '10.0.4.1')).error, 'The review queue is full, try again later.');
   });
 });
+
+test('public: only approved boards are listed or loadable', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async (t) => {
+  const { validatePack } = require('../pack');
+  const schema = `t_${crypto.randomBytes(6).toString('hex')}`;
+  const admin = new Pool({ connectionString: URL, ssl: db.sslFor(URL) });
+  await admin.query(`CREATE SCHEMA ${schema}`);
+  await db.init({ url: URL, schema, log: quiet });
+  t.after(async () => { await db.close(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); });
+
+  const code = (await c.createShareCode('Test')).code;
+  let ip = 0;
+  const share = async (p, tags, extra = {}) => {
+    assert.ok((await c.submitPack({ pack: p, shareCode: code, tags, madeBy: 'Secret Sam', ...extra }, { ip: `ip${++ip}` })).ok);
+    return (await db.query('SELECT id FROM packs WHERE content_hash = $1', [c.contentHash(validatePack(p).pack)])).rows[0].id;
+  };
+  await db.query("UPDATE share_codes SET uses = 0"); // not limited per code here: make more codes as needed
+  const codes = [code, ...(await Promise.all([1, 2, 3].map(async (i) => (await c.createShareCode('More ' + i)).code)))];
+  let k = 0;
+  const shareAny = (p, tags, extra) => share(p, tags, { shareCode: codes[Math.floor(k++ / 3)], ...extra });
+
+  const spooky = await shareAny(pack(201, { name: 'Spooky <Night>', sparkle: { charades: ['Ghost'] } }), ['Holidays'], { kidFriendly: false });
+  const toons = await shareAny(pack(202, { name: 'Saturday Toons' }), ['Cartoons & Kids', 'TV'], { kidFriendly: true });
+  const pending = await shareAny(pack(203, { name: 'Still Pending' }), ['TV']);
+
+  // Nothing is public until approved.
+  assert.deepStrictEqual(await c.publicTags(), { total: 0, tags: [] });
+  assert.deepStrictEqual((await c.listBoards()).boards, []);
+  assert.strictEqual(await c.loadPack(spooky), null);
+  assert.strictEqual(await c.randomBoard(), null);
+
+  await db.query("UPDATE packs SET status = 'approved', reviewed_at = now() WHERE id = ANY($1::uuid[])", [[spooky, toons]]);
+  const tags = await c.publicTags();
+  assert.strictEqual(tags.total, 2);
+  assert.deepStrictEqual(tags.tags.map((x) => [x.name, x.boards]), [['Cartoons & Kids', 1], ['Holidays', 1], ['TV', 1]], 'only tags with approved boards (the pending TV board isn\'t counted)');
+
+  const all = (await c.listBoards()).boards;
+  assert.deepStrictEqual(all.map((b) => b.name).sort(), ['Saturday Toons', 'Spooky <Night>']);
+  assert.ok(!all.some((b) => b.id === pending));
+  const toonsCard = all.find((b) => b.id === toons);
+  assert.deepStrictEqual(Object.keys(toonsCard).sort(), ['emoji', 'id', 'kidFriendly', 'madeBy', 'name', 'playCount', 'tags']);
+  assert.deepStrictEqual(toonsCard.tags.map((x) => x.slug), ['cartoons-and-kids', 'tv']);
+
+  // Filters: tag, search, kid-friendly; Surprise me respects tag + kid-friendly.
+  assert.deepStrictEqual((await c.listBoards({ tag: 'holidays' })).boards.map((b) => b.id), [spooky]);
+  assert.deepStrictEqual((await c.listBoards({ q: 'toon' })).boards.map((b) => b.id), [toons]);
+  assert.deepStrictEqual((await c.listBoards({ q: '%' })).boards, [], '% is plain text, not a wildcard');
+  assert.deepStrictEqual((await c.listBoards({ kid: '1' })).boards.map((b) => b.id), [toons]);
+  assert.deepStrictEqual((await c.listBoards({ tag: "x' OR 1=1 --" })).boards.length, 2, 'a bad tag is ignored, not run');
+  for (let i = 0; i < 5; i++) assert.strictEqual(await c.randomBoard({ kid: '1' }), toons);
+  assert.strictEqual(await c.randomBoard({ tag: 'holidays', kid: '1' }), null);
+
+  // A board loads as a pack that passes the strict upload rules, without its review details.
+  const loaded = await c.loadPack(spooky);
+  const checked = validatePack(loaded.pack, { kind: 'upload' });
+  assert.ok(checked.ok, checked.errors?.join('\n'));
+  assert.strictEqual(checked.pack.boards[0].categories[0].note, 'Name it.');
+  assert.deepStrictEqual(checked.pack.sparkle.charades, ['Ghost']);
+  assert.ok(!('status' in loaded.meta) && !('share_code_id' in loaded.meta));
+
+  // Plays count; archived boards disappear; bad ids are just "not found".
+  await c.countPlay(toons);
+  await c.countPlay(toons);
+  assert.strictEqual((await c.listBoards()).boards[0].id, toons, 'most played first');
+  assert.strictEqual((await c.listBoards()).boards[0].playCount, 2);
+  await c.countPlay(pending);
+  assert.strictEqual((await db.query('SELECT play_count FROM packs WHERE id = $1', [pending])).rows[0].play_count, 0, 'pending boards can\'t be played');
+  await db.query("UPDATE packs SET status = 'archived' WHERE id = $1", [spooky]);
+  assert.deepStrictEqual((await c.listBoards()).boards.map((b) => b.id), [toons]);
+  assert.strictEqual(await c.loadPack(spooky), null);
+  assert.strictEqual(await c.loadPack('not-a-uuid'), null);
+  assert.strictEqual(await c.loadPack('00000000-0000-0000-0000-000000000000'), null);
+
+  // Paging: 20 at a time.
+  await db.query(`INSERT INTO packs (name, content_hash, status) SELECT 'Filler ' || g, 'fill-' || g, 'approved' FROM generate_series(1, 25) g`);
+  const p0 = await c.listBoards({ page: 0 });
+  const p1 = await c.listBoards({ page: '1' });
+  assert.deepStrictEqual([p0.boards.length, p0.more, p1.boards.length, p1.more], [20, true, 6, false]);
+});

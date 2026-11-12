@@ -43,7 +43,20 @@
       <h2 style="margin-right:auto">Pick a theme</h2>
       <button id="cancelSetup" class="secondary hidden">← Back to the current game</button>
     </div>
+    <div id="setupTabs" class="setup-tabs" role="tablist"></div>
     <div id="themes" class="themes"></div>
+
+    <!-- 🌐 Community: approved boards shared by other people -->
+    <div id="community" class="community hidden">
+      <div class="comm-tools">
+        <input id="commSearch" type="search" maxlength="40" placeholder="Search boards" aria-label="Search boards by name">
+        <label class="comm-kid"><input id="commKid" type="checkbox"> 👨‍👩‍👧 Kid-friendly only</label>
+        <button id="commSurprise" class="secondary" type="button">🎲 Surprise me</button>
+      </div>
+      <div id="commTags" class="comm-tags"></div>
+      <div id="commCards" class="themes comm-cards"></div>
+      <button id="commMore" class="secondary hidden" type="button">Show more</button>
+    </div>
 
     <div id="makeOwn" class="panel setup-panel make-own hidden">
       <div class="theme-title">✨ Make your own</div>

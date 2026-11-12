@@ -62,7 +62,56 @@ app.get('/join/:code', (req, res) => res.sendFile(path.join(pub, 'join.html')));
 app.get('/remote', (req, res) => res.sendFile(path.join(pub, 'remote.html')));
 // The review page for community boards (PIN login; works only with a database).
 app.get('/admin', (req, res) => res.sendFile(path.join(pub, 'admin.html')));
-app.use('/admin', adminRouter({ ipOf: (req) => (PUBLIC_URL && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress) || 'unknown' }));
+// The visitor's network (Render puts it in x-forwarded-for). Used for rate limits only.
+const reqIp = (req) => (PUBLIC_URL && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress) || 'unknown';
+app.use('/admin', adminRouter({ ipOf: reqIp }));
+
+// ---- Community boards: public, read-only, approved boards only ----
+const communityReads = makeLimiter(120, 60 * 1000); // per network per minute
+app.use('/api/community', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  if (!db.enabled()) return res.status(404).json({ error: 'Community boards are off.' });
+  if (!communityReads.allow(reqIp(req))) return res.status(429).json({ error: 'Too many requests. Please wait a minute.' });
+  next();
+});
+const publicRoute = (fn) => async (req, res) => {
+  try {
+    const out = await fn(req);
+    if (out == null) return res.status(404).json({ error: 'That board isn\'t available.' });
+    res.json(out);
+  } catch (err) {
+    console.error(`Community request failed (${err.code || err.message}).`);
+    res.status(500).json({ error: 'Couldn\'t load community boards right now. Please try again.' });
+  }
+};
+app.get('/api/community/tags', publicRoute(() => community.publicTags()));
+app.get('/api/community/boards', publicRoute((req) => community.listBoards(req.query)));
+app.get('/api/community/random', publicRoute(async (req) => {
+  const id = await community.randomBoard(req.query);
+  return id ? { id } : null;
+}));
+// What the setup screen shows for a board: names and categories, never questions or answers.
+app.get('/api/community/boards/:id', publicRoute(async (req) => {
+  const pack = await loadCommunityPack(req.params.id);
+  if (!pack) return null;
+  return {
+    id: 'c:' + pack.meta.id, community: true, name: pack.name, emoji: pack.emoji || '', hasSparkle: !!pack.sparkle, teams: teamNamesFor(pack),
+    madeBy: pack.meta.madeBy, kidFriendly: pack.meta.kidFriendly, playCount: pack.meta.playCount, tags: pack.meta.tags,
+    boards: pack.boards.map((b) => ({ name: b.name, categories: b.categories.map((c) => ({ name: c.name, note: c.note, default: true })) })),
+  };
+}));
+
+// An approved community board, checked again with the strict upload rules before it's used. null if not available.
+async function loadCommunityPack(id) {
+  const loaded = await community.loadPack(id);
+  if (!loaded) return null;
+  const res = validatePack(loaded.pack, { kind: 'upload' });
+  if (!res.ok) {
+    console.error(`Community board ${loaded.meta.id} failed its check: ${res.errors[0]}`);
+    return null;
+  }
+  return { ...res.pack, meta: loaded.meta };
+}
 
 // The laptop's address on the home wifi, e.g. 192.168.1.20. Phones use it to reach the game.
 // Skips VPN, virtual-machine and Docker adapters. Returns null when not on a network.
@@ -489,9 +538,17 @@ io.on('connection', (socket) => {
       if (!ip) return reply(cb, { ok: false, error: "This laptop isn't connected to wifi, so phones can't reach it. Connect to your home wifi and click New game again." });
       joinUrl = `http://${ip}:${PORT}/join/${code}`;
     }
-    let pack, settings, boards, decks;
+    let pack, settings, boards, decks, communityId = null;
     try {
-      if (opts?.pack != null) {
+      if (opts?.communityId != null) {
+        // A community board: loaded from the database (approved only) and checked again.
+        if (!db.enabled()) return reply(cb, { ok: false, error: 'Community boards aren\'t available right now.' });
+        const loaded = await loadCommunityPack(opts.communityId);
+        if (!loaded) return reply(cb, { ok: false, error: 'That community board isn\'t available any more. Pick another one.' });
+        const { meta, ...clean } = loaded;
+        pack = clean;
+        communityId = meta.id;
+      } else if (opts?.pack != null) {
         // An uploaded pack: never trusted, so checked again here with the strict rules. Kept only in this room.
         const res = validatePack(opts.pack, { kind: 'upload' });
         if (!res.ok) return reply(cb, { ok: false, error: 'That pack has problems: ' + res.errors.slice(0, 3).join(' ') });
@@ -526,6 +583,7 @@ io.on('connection', (socket) => {
     if (closeOld) socket.leave(old.code + ':host'); // this socket is starting the new game; don't disconnect it
     if (closeOld) closeRoom(old.code, 'This game has ended. The host started a new one: scan the new QR code to join.');
     rooms.set(code, room);
+    if (communityId) community.countPlay(communityId).catch((err) => console.error(`Couldn't count a play (${err.code || err.message}).`)); // once per new game
     socket.data = { role: 'host', code };
     socket.join(code + ':host');
     reply(cb, { ok: true, code, secret: room.hostSecret, qr: room.qr });

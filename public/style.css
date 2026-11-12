@@ -669,3 +669,24 @@ body.admin { padding: 0 0 3rem; }
 .a-code { font-size: 1.4rem; letter-spacing: 0.08em; padding: 0.3rem 0.6rem; background: #0d0920; border-radius: 8px; user-select: all; }
 .a-warn { color: var(--accent); margin-top: 0.4rem; }
 .admin button:disabled { opacity: 0.4; cursor: default; }
+
+/* ---- Setup tabs and 🌐 Community ---- */
+.setup-tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; margin: 0.2rem 0 0.4rem; border-bottom: 1px solid #2f2560; }
+.setup-tab { background: transparent; color: var(--muted); border: 0; border-bottom: 3px solid transparent; border-radius: 0; box-shadow: none; padding: 0.55rem 0.9rem; font-weight: 700; }
+.setup-tab:hover:not(:disabled) { color: var(--text); filter: none; }
+.setup-tab.on { color: var(--text); border-bottom-color: var(--accent); }
+.community { margin: 0.6rem 0 1rem; }
+.comm-tools { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.comm-tools input[type="search"] { flex: 1; min-width: 12rem; margin: 0; }
+.comm-kid { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; cursor: pointer; }
+.comm-kid input { width: auto; margin: 0; accent-color: var(--accent); }
+.comm-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.7rem 0 0.2rem; }
+.comm-tags .segbtn { font-size: 0.9rem; }
+.comm-cards { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.theme.comm-card { flex-wrap: nowrap; justify-content: flex-start; text-align: left; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; }
+.comm-card .theme-emoji { flex: 0 0 auto; }
+.comm-info { display: grid; gap: 0.15rem; min-width: 0; }
+.comm-card .theme-name { overflow-wrap: anywhere; }
+.comm-tagline, .comm-meta { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+.comm-note { grid-column: 1 / -1; }
+.comm-detail { margin-top: 0.2rem; }
