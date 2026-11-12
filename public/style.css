@@ -615,3 +615,57 @@ body.remote button:disabled { opacity: 0.35; filter: grayscale(0.6); }
 .share label.share-kid { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; margin-top: 0.9rem; }
 .share input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent, #ffcc33); }
 .share-done { color: #7CFC9A; font-weight: 600; }
+
+/* ---- /admin ---- */
+body.admin { padding: 0 0 3rem; }
+.a-top { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1.2rem; border-bottom: 1px solid #2a2150; }
+.a-title { margin-left: 0.4rem; color: var(--muted); font-weight: 600; }
+.a-main { max-width: 960px; margin: 0 auto; padding: 1rem; }
+.a-card { background: #1a1338; border: 1px solid #2f2560; border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.a-login { max-width: 360px; margin: 3rem auto; display: grid; gap: 0.5rem; }
+.a-login h2 { margin: 0 0 0.4rem; }
+.a-error { color: #ff8a8a; min-height: 1.2em; }
+.a-notice { background: #3a1630; border: 1px solid #ff6b6b; border-radius: 10px; padding: 0.7rem 1rem; margin-bottom: 1rem; }
+.a-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.a-tabs button { background: transparent; color: var(--text); border: 1px solid #3a2f6e; box-shadow: none; }
+.a-tabs button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.a-msg { position: sticky; top: 0.5rem; z-index: 5; background: #143524; border: 1px solid #7CFC9A; border-radius: 10px; padding: 0.6rem 1rem; margin-bottom: 1rem; }
+.a-msg.bad { background: #3a1630; border-color: #ff6b6b; }
+.a-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.a-row input, .a-row select { width: auto; flex: 1; min-width: 8rem; margin: 0; }
+.a-spread { justify-content: space-between; }
+.a-board h3, .a-listed h3 { margin: 0 0 0.2rem; }
+.a-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 0.8rem; align-items: center; margin: 0.8rem 0; max-width: 32rem; }
+.a-grid input { margin: 0; }
+.a-label { font-weight: 600; margin: 0.6rem 0 0.3rem; }
+.a-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.a-tag, .a-check { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; border: 1px solid #3a2f6e; border-radius: 999px; cursor: pointer; font-weight: 500; }
+.a-check { border: 0; padding: 0; }
+.a-tag:has(input:checked) { border-color: var(--accent); background: rgba(255, 201, 51, 0.12); }
+.a-tag:has(input:disabled) { opacity: 0.45; cursor: default; }
+.admin input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
+.a-suggest { margin-top: 0.8rem; padding: 0.7rem 0.9rem; border: 1px dashed var(--accent); border-radius: 10px; display: grid; gap: 0.5rem; justify-items: start; }
+.a-suggest .a-row { width: 100%; }
+.a-emoji { max-width: 4.5rem; min-width: 4.5rem !important; flex: 0 0 4.5rem !important; text-align: center; }
+.a-preview { margin: 1rem 0; background: #140e2c; border-radius: 10px; padding: 0.6rem 0.9rem; }
+.a-preview summary { cursor: pointer; font-weight: 600; }
+.a-preview h4 { margin: 1rem 0 0.4rem; color: var(--accent); }
+.a-cat { margin: 0.6rem 0 0.9rem; }
+.a-cat-name { font-weight: 700; }
+.a-cat ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+.a-cat li { margin: 0.3rem 0; }
+.a-verify { background: rgba(255, 201, 51, 0.12); border-left: 3px solid var(--accent); padding-left: 0.4rem; }
+.a-actions { margin-top: 0.8rem; }
+.admin button.danger { background: #5a1f33; color: #ffd6dc; border-color: #ff6b6b; }
+.a-badge { display: inline-block; margin-left: 0.5rem; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #3a2f6e; color: var(--muted); vertical-align: middle; }
+.a-archived { opacity: 0.65; }
+.a-tagrow, .a-coderow { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: 1px solid #2a2150; }
+.a-tagrow:last-child, .a-coderow:last-child { border-bottom: 0; }
+.a-tagrow input, .a-tagrow select { width: auto; margin: 0; }
+.a-tagrow input:not(.a-emoji) { flex: 1; min-width: 9rem; }
+.a-count { min-width: 9rem; }
+.a-coderow .muted { flex: 1; }
+.a-reveal { border-color: var(--accent); }
+.a-code { font-size: 1.4rem; letter-spacing: 0.08em; padding: 0.3rem 0.6rem; background: #0d0920; border-radius: 8px; user-select: all; }
+.a-warn { color: var(--accent); margin-top: 0.4rem; }
+.admin button:disabled { opacity: 0.4; cursor: default; }

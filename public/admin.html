@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>BuzzIn — Admin</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="admin">
+  <header class="a-top">
+    <div class="logo"><img class="logo-mark" src="/logo.svg" alt=""><span class="logo-word">Buzz<span>In</span></span> <span class="a-title">Admin</span></div>
+    <button id="aLogout" class="secondary hidden">Log out</button>
+  </header>
+
+  <main class="a-main">
+    <div id="aNotice" class="a-notice hidden"></div>
+
+    <form id="aLogin" class="a-card a-login hidden">
+      <h2>Log in</h2>
+      <label for="aPin">Admin PIN</label>
+      <input id="aPin" type="password" autocomplete="off" maxlength="100">
+      <button type="submit">Log in</button>
+      <div id="aLoginMsg" class="a-error"></div>
+    </form>
+
+    <div id="aApp" class="hidden">
+      <nav class="a-tabs" role="tablist">
+        <button data-tab="pending" role="tab">Review queue</button>
+        <button data-tab="approved" role="tab">Approved</button>
+        <button data-tab="tags" role="tab">Tags</button>
+        <button data-tab="codes" role="tab">Share codes</button>
+      </nav>
+      <div id="aMsg" class="a-msg hidden" role="status"></div>
+      <section id="aView"></section>
+    </div>
+  </main>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

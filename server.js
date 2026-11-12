@@ -16,6 +16,7 @@ const { validatePack, defaultCategories, checkUploadedText } = require('./pack')
 const remotes = require('./remote');
 const db = require('./db');
 const community = require('./community');
+const { adminRouter } = require('./admin');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -59,6 +60,9 @@ app.get('/', (req, res) => res.redirect('/host'));
 app.get('/host', (req, res) => res.sendFile(path.join(pub, 'host.html')));
 app.get('/join/:code', (req, res) => res.sendFile(path.join(pub, 'join.html')));
 app.get('/remote', (req, res) => res.sendFile(path.join(pub, 'remote.html')));
+// The review page for community boards (PIN login; works only with a database).
+app.get('/admin', (req, res) => res.sendFile(path.join(pub, 'admin.html')));
+app.use('/admin', adminRouter({ ipOf: (req) => (PUBLIC_URL && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress) || 'unknown' }));
 
 // The laptop's address on the home wifi, e.g. 192.168.1.20. Phones use it to reach the game.
 // Skips VPN, virtual-machine and Docker adapters. Returns null when not on a network.
