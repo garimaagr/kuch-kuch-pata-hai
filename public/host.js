@@ -181,7 +181,17 @@ function renderSetup() {
 }
 
 // ---- Make your own: build a prompt, paste Claude's reply, check it on the server, then start ----
-const MO_DEFAULTS = { topic: '', tone: 'silly', boards: 2, sparkle: true, format: 'table' };
+const MO_DEFAULTS = { topic: '', region: 'mixed', tone: 'silly', boards: 2, sparkle: true, format: 'table' };
+
+// Who's playing: shapes which references the questions use.
+const REGIONS = {
+  mixed: ['🌍 Mixed (US + India)', 'friends in the US and India',
+    '- Should make sense to people in both the US and India. Avoid very local references.'],
+  usa: ['🇺🇸 USA', 'friends in the USA',
+    '- Made for an American crowd: US pop culture, TV, sports, food and everyday life are great. Use US spellings.'],
+  india: ['🇮🇳 India', 'friends in India',
+    '- Made for an Indian crowd: Bollywood, cricket, desi food, festivals, ads and everyday Indian life are great. A little Hinglish is fine, but keep questions readable in English.'],
+};
 let mo = (() => {
   try { return { ...MO_DEFAULTS, ...JSON.parse(load('fbMakeOwn') || '{}') }; } catch { return { ...MO_DEFAULTS }; }
 })();
@@ -223,7 +233,7 @@ function makePrompt() {
     '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","boards":[{"name":"<board name>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
   ];
   return [
-    'Make a trivia pack for a party buzzer game played by friends in the US and India.',
+    `Make a trivia pack for a party buzzer game played by ${(REGIONS[mo.region] || REGIONS.mixed)[1]}.`,
     '',
     `Topic: ${topic}`,
     `Tone: ${TONES[mo.tone][1]}`,
@@ -233,7 +243,7 @@ function makePrompt() {
     '- Each board has 5 categories × 5 questions. Board 1 values: 100,200,300,400,500. Board 2 (if any) values: 200,400,600,800,1000. Lowest = almost everyone gets it; highest = a real stretch.',
     '- Use fun category formats: "___ Explained Badly", "Overly Wordy ___", "___ in Emoji", "Who Said It?", "Real or Made Up?".',
     '- Every category gets a short "how to play" line for the host (max 100 characters) saying what players should answer, e.g. "A movie plot described badly. Name the film".',
-    '- Should make sense to people in both the US and India. Avoid very local references.',
+    (REGIONS[mo.region] || REGIONS.mixed)[2],
     '- Answers short (a name, title or a few words).',
     '- Every question has "bonus": a quick, silly, safe thing to do in under 15 seconds that fits the answer. bonusPoints is 50.',
     '- Optional "funFact": one short "did you know" line.',
@@ -254,6 +264,7 @@ function renderMakeOwn() {
   if (document.activeElement !== $('moTopic')) $('moTopic').value = mo.topic;
   moSeg('moTone', Object.entries(TONES).map(([k, [label]]) => [k, label]), mo.tone, (v) => (mo.tone = v));
   moSeg('moBoards', [[1, '1 board'], [2, '2 boards']], mo.boards, (v) => (mo.boards = v));
+  moSeg('moRegion', Object.entries(REGIONS).map(([k, [label]]) => [k, label]), REGIONS[mo.region] ? mo.region : 'mixed', (v) => (mo.region = v));
   moSeg('moSparkle', [[true, 'Yes'], [false, 'No']], mo.sparkle, (v) => (mo.sparkle = v));
   moSeg('moFormat', [['table', '📊 Table (Excel / Sheets)'], ['json', '{ } JSON']], mo.format, (v) => (mo.format = v));
   $('moHow').textContent = mo.format === 'table'

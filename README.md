@@ -48,7 +48,7 @@ It prints something like:
 ## ✨ Make your own (any topic, made with Claude)
 
 1. Click **New game**, then the **✨ Make your own** card.
-2. Type a **topic** (like "90s cartoons" or "our office"), pick the **tone** (😂 Silly, 🙂 Mixed or 🤓 Nerdy), **1 or 2 boards**, whether you want a **Sparkle deck**, and the **reply format**:
+2. Type a **topic** (like "90s cartoons" or "our office"), pick where the **players are from** (🌍 Mixed US + India, 🇺🇸 USA or 🇮🇳 India, so the questions use the right references), the **tone** (😂 Silly, 🙂 Mixed or 🤓 Nerdy), **1 or 2 boards**, whether you want a **Sparkle deck**, and the **reply format**:
    - **📊 Table (Excel / Sheets)**, recommended: Claude replies with one row per question. You can review and edit it in a spreadsheet, and if Claude stops halfway you can ask it to continue.
    - **{ } JSON**: the raw pack format.
 3. Click **📋 Copy prompt** and paste it into Claude (claude.ai).
