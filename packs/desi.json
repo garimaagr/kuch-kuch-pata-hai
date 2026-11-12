@@ -14,7 +14,8 @@
               "question": "Retired cop hires two unemployed guys to fight a man whose main management style is asking for a headcount.",
               "answer": "Sholay",
               "bonus": "Sing a line of \"Yeh Dosti\" with a teammate, arms around each other",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "funFact": "It ran for over five years at Mumbai's Minerva theatre."
             },
             {
               "value": 200,
@@ -28,7 +29,8 @@
               "question": "Three men invest their money in a scheme that promises to double it in 21 days. Their greed turns their lives upside down.",
               "answer": "Phir Hera Pheri",
               "bonus": "Say \"Ye Baburao ka style hai!\" in Baburao's voice",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "trapAnswer": "Hera Pheri"
             },
             {
               "value": 400,
@@ -55,7 +57,8 @@
               "question": "Big family, two brothers. Elder brother marries, very big wedding, very many songs. Younger brother and bhabhi's sister are doing teasing, stealing shoes, taking money, more songs. Then bhabhi falls from stairs and goes to God. Now whole family wants sister marries elder brother, and sister says okay because family, but she loves the younger one. Nobody is asking her. Only the dog is understanding. Dog carries the letter and solves full film. Dog is real hero.",
               "answer": "Hum Aapke Hain Koun..!",
               "bonus": "Sing a line of \"Didi Tera Devar Deewana\"",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "trapAnswer": "Hum Saath-Saath Hain"
             },
             {
               "value": 200,
@@ -83,7 +86,9 @@
               "question": "Village where rain is never stopping. Old big house, and below house, in a hole, is a hungry god whom nobody is allowed to worship. He has gold coins in his underwear. Man goes down with atta dolls, tricks him, takes coins, again and again, becomes rich. Man is very greedy and he teaches his son also to be greedy. Son goes down for more coins and makes very big mistake. Also great-grandmother upstairs is slowly becoming a tree. Do not ask.",
               "answer": "Tumbbad",
               "bonus": "Whisper \"Hastar\" in your spookiest voice",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "funFact": "It took about six years to make.",
+              "verify": true
             }
           ]
         },
@@ -135,21 +140,24 @@
               "question": "🚂🌻🇨🇭🙋‍♂️",
               "answer": "Dilwale Dulhania Le Jayenge",
               "bonus": "Sing a line of \"Tujhe Dekha To\"",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "funFact": "It has played at Mumbai's Maratha Mandir cinema almost non-stop since 1995."
             },
             {
               "value": 200,
               "question": "🏏🌧️🇬🇧💰",
               "answer": "Lagaan",
               "bonus": "Sing a line of \"Ghanan Ghanan\"",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "funFact": "It was nominated for the Oscar for Best Foreign Language Film."
             },
             {
               "value": 300,
               "question": "🚽💍❤️",
               "answer": "Toilet: Ek Prem Katha",
               "bonus": "Give a 10-second dramatic speech on why every home needs a toilet",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "trapAnswer": "Pad Man"
             },
             {
               "value": 400,
@@ -176,7 +184,8 @@
               "question": "Man dances on the roof of a moving train and refuses to come down until the song is over.",
               "answer": "Chaiyya Chaiyya (Dil Se..)",
               "bonus": "Do the train-roof dance for 10 seconds (feet stay on the floor)",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "funFact": "It was shot on the roof of a real moving train on the Nilgiri Mountain Railway."
             },
             {
               "value": 200,
@@ -197,7 +206,8 @@
               "question": "Man lists where his outfit comes from (Japanese shoes, English trousers, a Russian hat) but insists his heart is still desi.",
               "answer": "Mera Joota Hai Japani (Shree 420)",
               "bonus": "Sing the first line while doing Raj Kapoor's tramp walk",
-              "bonusPoints": 50
+              "bonusPoints": 50,
+              "funFact": "The singer was Mukesh."
             },
             {
               "value": 500,
@@ -213,6 +223,223 @@
     {
       "name": "Desi Life",
       "categories": [
+        {
+          "name": "Desi Parents Explained Badly",
+          "default": true,
+          "questions": [
+            {
+              "value": 200,
+              "question": "Footwear that, in a desi home, doubles as a long-range guided missile.",
+              "answer": "Chappal (the flying chappal)",
+              "bonus": "Throw an imaginary chappal in slow motion, sound effects included",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "A boy you have never met, who topped every exam, became an engineer AND a doctor, and still calls his mother every day. Used against you since birth.",
+              "answer": "Sharma ji ka beta",
+              "bonus": "Say \"Sharma ji ka beta toh…\" like a deeply disappointed parent",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "Big plastic tub in the freezer that promises happiness but always contains last Tuesday's dal.",
+              "answer": "The ice-cream tub full of leftovers",
+              "bonus": "Open an imaginary ice-cream tub, find dal inside, and react like a filmy heroine",
+              "bonusPoints": 50,
+              "trapAnswer": "Ice cream"
+            },
+            {
+              "value": 800,
+              "question": "A plastic bag, stuffed with more plastic bags, kept in a kitchen drawer in case the family ever needs 300 plastic bags at once.",
+              "answer": "The bag of bags",
+              "bonus": "Fold an imaginary plastic bag into a tiny triangle, aunty-style",
+              "bonusPoints": 50
+            },
+            {
+              "value": 1000,
+              "question": "Ancient household cure-all: stirred into warm milk for colds, put on cuts, and prescribed for everything from pimples to heartbreak.",
+              "answer": "Haldi (turmeric)",
+              "bonus": "Say \"Haldi wala doodh pi lo!\" like a 90s filmy mother",
+              "bonusPoints": 50,
+              "trapAnswer": "Vicks VapoRub",
+              "funFact": "Haldi doodh is now sold in cafés around the world as \"golden milk\" or a \"turmeric latte\"."
+            }
+          ]
+        },
+        {
+          "name": "Wedding Season",
+          "default": true,
+          "questions": [
+            {
+              "value": 200,
+              "question": "The night the bride's hands get an intricate temporary tattoo, and she is not allowed to lift a finger until it dries.",
+              "answer": "Mehendi",
+              "bonus": "Do the \"Mehndi Laga Ke Rakhna\" hook step",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "Procession where the groom arrives on a horse, very slowly, because his entire family must first finish dancing in the middle of the road.",
+              "answer": "Baraat",
+              "bonus": "Do the baraat naagin dance for 5 seconds",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "Pre-wedding heist in which the bride's sisters steal the groom's shoes and hold them for ransom.",
+              "answer": "Joota Chupai (stealing the shoes)",
+              "bonus": "Negotiate a ransom for the host's shoes in 10 seconds",
+              "bonusPoints": 50,
+              "funFact": "Hum Aapke Hain Koun..! made it famous everywhere with the song \"Joote Do Paise Lo\"."
+            },
+            {
+              "value": 800,
+              "question": "In many South Indian weddings, the sacred thread the groom ties around the bride's neck while the drums suddenly play extra loud.",
+              "answer": "Thaali (mangalsutra)",
+              "bonus": "Shout \"Getti melam!\" and play the loudest air-drums you can",
+              "bonusPoints": 50
+            },
+            {
+              "value": 1000,
+              "question": "Bengali wedding moment when the bride, carried in on a wooden seat, slowly lowers the betel leaves hiding her face to look at the groom.",
+              "answer": "Shubho Drishti",
+              "bonus": "Hide your face behind your hands, then do a slow, dramatic reveal",
+              "bonusPoints": 50,
+              "funFact": "Her brothers usually carry her on the seat (a piri) and circle the groom seven times first."
+            }
+          ]
+        },
+        {
+          "name": "Festivals in Emoji",
+          "default": true,
+          "questions": [
+            {
+              "value": 200,
+              "question": "🪔🎆🍬🧹",
+              "answer": "Diwali",
+              "bonus": "Write your name in the air with an imaginary sparkler",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "🎨💦🔫😂",
+              "answer": "Holi",
+              "bonus": "Shout \"Bura na mano, Holi hai!\"",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "🌙🕌🍲🤗",
+              "answer": "Eid",
+              "bonus": "Say \"Eid Mubarak\" and give a teammate a (gentle) hug",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "🦁🔱🥁🎪",
+              "answer": "Durga Puja (accept Navratri)",
+              "bonus": "Do the dhunuchi dance for 5 seconds (imaginary incense pot!)",
+              "bonusPoints": 50,
+              "funFact": "Kolkata's Durga Puja is on UNESCO's list of Intangible Cultural Heritage (added in 2021)."
+            },
+            {
+              "value": 1000,
+              "question": "🛶🌸🍌🍚",
+              "answer": "Onam",
+              "bonus": "Row your team's snake boat for 5 seconds, all together",
+              "bonusPoints": 50,
+              "trapAnswer": "Pongal",
+              "funFact": "The Onam feast, the sadya, has 20+ dishes served on a banana leaf."
+            }
+          ]
+        },
+        {
+          "name": "Ad Break Mein Yaad Hai?",
+          "questions": [
+            {
+              "value": 200,
+              "question": "Which chocolate brand used the famous \"Kuch Meetha Ho Jaaye\" slogan?",
+              "answer": "Cadbury Dairy Milk",
+              "bonus": "Do the girl-dancing-onto-the-cricket-field dance",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "Which detergent brand is associated with the slogan \"Daag Achhe Hain\"?",
+              "answer": "Surf Excel",
+              "bonus": "Act out jumping in a mud puddle, then looking very pleased",
+              "bonusPoints": 50
+            },
+            {
+              "value": 600,
+              "question": "Which Indian telecom brand became famous for the \"Har Ek Friend Zaroori Hota Hai\" campaign?",
+              "answer": "Airtel",
+              "bonus": "Sing the \"Har ek friend zaroori hota hai\" jingle",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "Which brand featured the \"Washing Powder Nirma\" jingle?",
+              "answer": "Nirma",
+              "bonus": "Sing the full \"Washing powder Nirma\" jingle, twirl included",
+              "bonusPoints": 50,
+              "funFact": "Nirma was named after the founder's daughter, Nirupama."
+            },
+            {
+              "value": 1000,
+              "question": "Which Indian brand used the advertising character \"Gattu\", created by R. K. Laxman?",
+              "answer": "Asian Paints",
+              "bonus": "Draw Gattu in 10 seconds",
+              "bonusPoints": 50,
+              "funFact": "R. K. Laxman created Gattu for Asian Paints back in 1954.",
+              "verify": true
+            }
+          ],
+          "default": true
+        },
+        {
+          "name": "Aila!",
+          "questions": [
+            {
+              "value": 200,
+              "question": "Who captained India to its 2011 Cricket World Cup victory?",
+              "answer": "MS Dhoni",
+              "bonus": "Play a helicopter shot and hold the finish",
+              "bonusPoints": 50,
+              "trapAnswer": "Sachin Tendulkar"
+            },
+            {
+              "value": 400,
+              "question": "Which Indian batter hit six sixes in one over against England in the 2007 T20 World Cup?",
+              "answer": "Yuvraj Singh",
+              "bonus": "Hit six imaginary sixes in 10 seconds",
+              "bonusPoints": 50,
+              "funFact": "The bowler was Stuart Broad."
+            },
+            {
+              "value": 600,
+              "question": "Which country did India defeat in the 1983 Cricket World Cup final?",
+              "answer": "West Indies",
+              "bonus": "Lift the trophy on the Lord's balcony like Kapil Dev",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "Who took the final wicket in India's 2007 T20 World Cup final against Pakistan?",
+              "answer": "Joginder Sharma (Misbah-ul-Haq, caught by Sreesanth)"
+            },
+            {
+              "value": 1000,
+              "question": "Which Australian batter scored an unbeaten 201 against Afghanistan in the 2023 World Cup, despite suffering from severe cramps?",
+              "answer": "Glenn Maxwell",
+              "funFact": "Australia were 91 for 7 chasing 292 when he started his innings.",
+              "verify": true
+            }
+          ],
+          "default": true,
+          "note": "Cricket for beginners (and experts) 🏏"
+        },
         {
           "name": "Pyaar Dosti Hai",
           "questions": [
@@ -250,114 +477,6 @@
               "answer": "Farhan Qureshi",
               "bonus": "Give a 10-second speech like Chatur, with total confidence",
               "bonusPoints": 50
-            }
-          ]
-        },
-        {
-          "name": "Ad Break Mein Yaad Hai?",
-          "questions": [
-            {
-              "value": 200,
-              "question": "Which chocolate brand used the famous \"Kuch Meetha Ho Jaaye\" slogan?",
-              "answer": "Cadbury Dairy Milk",
-              "bonus": "Do the girl-dancing-onto-the-cricket-field dance",
-              "bonusPoints": 50
-            },
-            {
-              "value": 400,
-              "question": "Which detergent brand is associated with the slogan \"Daag Achhe Hain\"?",
-              "answer": "Surf Excel",
-              "bonus": "Act out jumping in a mud puddle, then looking very pleased",
-              "bonusPoints": 50
-            },
-            {
-              "value": 600,
-              "question": "Which Indian telecom brand became famous for the \"Har Ek Friend Zaroori Hota Hai\" campaign?",
-              "answer": "Airtel",
-              "bonus": "Sing the \"Har ek friend zaroori hota hai\" jingle",
-              "bonusPoints": 50
-            },
-            {
-              "value": 800,
-              "question": "Which brand featured the \"Washing Powder Nirma\" jingle?",
-              "answer": "Nirma",
-              "bonus": "Sing the full \"Washing powder Nirma\" jingle, twirl included",
-              "bonusPoints": 50
-            },
-            {
-              "value": 1000,
-              "question": "Which Indian brand used the advertising character \"Gattu\", created by R. K. Laxman?",
-              "answer": "Asian Paints",
-              "bonus": "Draw Gattu in 10 seconds",
-              "bonusPoints": 50
-            }
-          ]
-        },
-        {
-          "name": "Aila!",
-          "questions": [
-            {
-              "value": 200,
-              "question": "Who captained India to its 2011 Cricket World Cup victory?",
-              "answer": "MS Dhoni",
-              "bonus": "Play a helicopter shot and hold the finish",
-              "bonusPoints": 50
-            },
-            {
-              "value": 400,
-              "question": "Which Indian batter hit six sixes in one over against England in the 2007 T20 World Cup?",
-              "answer": "Yuvraj Singh"
-            },
-            {
-              "value": 600,
-              "question": "Which country did India defeat in the 1983 Cricket World Cup final?",
-              "answer": "West Indies",
-              "bonus": "Lift the trophy on the Lord's balcony like Kapil Dev",
-              "bonusPoints": 50
-            },
-            {
-              "value": 800,
-              "question": "Who took the final wicket in India's 2007 T20 World Cup final against Pakistan?",
-              "answer": "Joginder Sharma (Misbah-ul-Haq, caught by Sreesanth)"
-            },
-            {
-              "value": 1000,
-              "question": "Which Australian batter scored an unbeaten 201 against Afghanistan in the 2023 World Cup, despite suffering from severe cramps?",
-              "answer": "Glenn Maxwell"
-            }
-          ]
-        },
-        {
-          "name": "Dhan Dhana Dhan Goal",
-          "questions": [
-            {
-              "value": 200,
-              "question": "Which Kolkata club, founded in 1889, famously beat an English regiment team in the 1911 IFA Shield final, with most of its players barefoot?",
-              "answer": "Mohun Bagan"
-            },
-            {
-              "value": 400,
-              "question": "Which three countries jointly hosted the 2026 FIFA World Cup?",
-              "answer": "Canada, Mexico and the United States"
-            },
-            {
-              "value": 600,
-              "question": "Who holds the record for the most goals in men's international football, and roughly how many has he scored?",
-              "answer": "Cristiano Ronaldo — about 146 (accept anything close)",
-              "bonus": "Do the \"Siuuu\" celebration",
-              "bonusPoints": 50
-            },
-            {
-              "value": 800,
-              "question": "Which player holds the record for the most appearances in men's FIFA World Cup matches, and how many has he played?",
-              "answer": "Lionel Messi — 34 appearances",
-              "bonus": "Lift an imaginary World Cup, Messi-style",
-              "bonusPoints": 50
-            },
-            {
-              "value": 1000,
-              "question": "What is common to these footballers: Alfredo Di Stéfano, Ferenc Puskás, Diego Costa, Thiago Motta, José Altafini, Declan Rice, Wilfried Zaha, Jermaine Jones and Munir El Haddadi?",
-              "answer": "They all played international football for more than one country"
             }
           ]
         },
@@ -401,6 +520,42 @@
               "bonusPoints": 50
             }
           ]
+        },
+        {
+          "name": "Dhan Dhana Dhan Goal",
+          "questions": [
+            {
+              "value": 200,
+              "question": "Which Kolkata club, founded in 1889, famously beat an English regiment team in the 1911 IFA Shield final, with most of its players barefoot?",
+              "answer": "Mohun Bagan",
+              "bonus": "Celebrate a goal like a South American commentator: \"GOOOOL!\" for 5 seconds",
+              "bonusPoints": 50
+            },
+            {
+              "value": 400,
+              "question": "Which three countries jointly hosted the 2026 FIFA World Cup?",
+              "answer": "Canada, Mexico and the United States"
+            },
+            {
+              "value": 600,
+              "question": "Who holds the record for the most goals in men's international football, and roughly how many has he scored?",
+              "answer": "Cristiano Ronaldo — about 146 (accept anything close)",
+              "bonus": "Do the \"Siuuu\" celebration",
+              "bonusPoints": 50
+            },
+            {
+              "value": 800,
+              "question": "Which player holds the record for the most appearances in men's FIFA World Cup matches, and how many has he played?",
+              "answer": "Lionel Messi — 34 appearances",
+              "bonus": "Lift an imaginary World Cup, Messi-style",
+              "bonusPoints": 50
+            },
+            {
+              "value": 1000,
+              "question": "What is common to these footballers: Alfredo Di Stéfano, Ferenc Puskás, Diego Costa, Thiago Motta, José Altafini, Declan Rice, Wilfried Zaha, Jermaine Jones and Munir El Haddadi?",
+              "answer": "They all played international football for more than one country"
+            }
+          ]
         }
       ]
     }
@@ -408,38 +563,33 @@
   "sparkle": {
     "draw": {
       "easy": [
-        "Phuljhadi (sparkler)",
-        "Rocket in a bottle",
+        "Chai cup",
+        "Cricket bat",
         "Saree",
         "Rangoli",
-        "Gulab jamun",
-        "Laddoo",
-        "Fairy lights",
-        "Marigold garland",
-        "Gift box with a bow"
+        "Samosa",
+        "Auto-rickshaw",
+        "Phuljhadi (sparkler)"
       ],
       "medium": [
-        "Anaar (flower-pot firecracker)",
-        "Chakri (ground spinner)",
-        "Kurta-pajama",
+        "Pressure cooker",
+        "Baraat horse",
+        "Holi colours",
         "Mehendi hands",
-        "Kaju katli",
-        "Akash kandil (paper lantern)",
-        "Toran on the door",
-        "Puja thali",
-        "Lakshmi's footprints",
-        "Gold coin",
-        "Dry fruit box"
+        "Dabba (lunch box)",
+        "Kite flying",
+        "Tiffin carrier"
       ],
       "tricky": [
-        "Diwali cleaning (dusting the fan)",
-        "Diwali card party",
-        "Bhai Dooj tilak",
-        "Selfie with the lights",
+        "Traffic jam with honking",
+        "Aunty at a wedding",
+        "Wedding buffet queue",
+        "Auto driver refusing to go",
+        "Whole family watching a cricket match on TV",
         "Someone stepping on the rangoli",
-        "Hanging fairy lights from a ladder",
+        "Touching elders' feet for blessings",
         "Swapping mithai boxes with the neighbours",
-        "Touching elders' feet for blessings"
+        "Diwali cleaning (dusting the fan)"
       ]
     },
     "charades": [
