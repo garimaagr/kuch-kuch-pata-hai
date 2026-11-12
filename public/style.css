@@ -314,10 +314,6 @@ body.redflash::after { animation: redflash 0.6s ease-out; }
 /* How-to-play line for each category */
 .qnote { display: inline-block; margin: 0.4rem 0 0.2rem; padding: 0.35rem 0.8rem; border-radius: 999px; background: #2a1d52; border: 1px solid #4a3a8a; color: #e8e2ff; font-size: 1.05rem; }
 .qnote b { color: #ffcc33; font-weight: 700; }
-.cat-help { flex-basis: 100%; margin: 0.2rem 0 0 12rem; padding-left: 1.1rem; color: #b8aee0; font-size: 0.9rem; }
-.cat-help li { margin: 0.15rem 0; }
-.cat-help b { color: #e8e2ff; }
-@media (max-width: 700px) { .cat-help { margin-left: 0; } }
 
 /* ================================================================
    BuzzIn clean look: flat surfaces, one accent, calmer motion.
@@ -471,8 +467,6 @@ button.attention { border-color: var(--accent); color: var(--accent); }
 .howto.tv .howto-list li > span { font-size: 1.4em; width: 2.2em; }
 
 /* ---- Customise hints, first-time explainers ---- */
-.hint { flex-basis: 100%; margin: -0.2rem 0 0 12rem; color: var(--muted); font-size: 0.85rem; }
-@media (max-width: 700px) { .hint { margin-left: 0; } }
 .explain { display: inline-block; margin: 0.5rem 0 0; padding: 0.35rem 0.85rem; border-radius: 10px; background: #2a2210; border: 1px solid #6b5313; color: #ffe08a; font-weight: 600; }
 .explain { display: table; } /* its own line, under the heading */
 
@@ -499,3 +493,46 @@ button.attention { border-color: var(--accent); color: var(--accent); }
 .join-code { flex: none; white-space: nowrap; }
 .join-code b { color: var(--accent); letter-spacing: 0.08em; }
 .header-actions { flex-wrap: nowrap; }
+
+/* ---- Setup: compact Customise rows, ⓘ tooltips ---- */
+#themeDetail { padding: 1rem 1.3rem; }
+#themeBoards { font-size: 0.95rem; line-height: 1.5; }
+#setupNote { color: #ff8a8a; font-weight: 600; margin-top: 0.4rem; }
+#customise { margin-top: 0.8rem; border-top: 1px solid var(--line); padding-top: 0.3rem; }
+#customise .opt { display: grid; grid-template-columns: 13rem 1fr; align-items: center; gap: 0.8rem; margin: 0; padding: 0.4rem 0; border-top: 1px solid var(--line); }
+#customise .opt:first-of-type { border-top: 0; }
+#customise .opt-label { width: auto; padding: 0; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+#customise .opt-label small { display: block; flex-basis: 100%; }
+#customise .seg { gap: 0.35rem; }
+#customise .segbtn { padding: 0.35em 0.8em; font-size: 0.92rem; }
+#resetSetup { margin-top: 0.5rem; font-size: 0.85rem; padding: 0.4em 0.8em; }
+@media (max-width: 700px) { #customise .opt { grid-template-columns: 1fr; gap: 0.4rem; } }
+
+/* A tooltip from data-tip: on hover, and on focus (keyboard, or a tap) */
+[data-tip] { position: relative; }
+[data-tip]:hover::after, [data-tip]:focus-visible::after, .info[data-tip]:focus::after, .cat-chip[data-tip]:focus::after {
+  content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+  width: max-content; max-width: 18rem; white-space: normal; text-align: left;
+  background: #0b0818; color: var(--text); border: 1px solid var(--line-2); border-radius: 8px;
+  padding: 0.45em 0.7em; font-size: 0.85rem; font-weight: 500; line-height: 1.35; z-index: 90; pointer-events: none;
+  box-shadow: 0 8px 24px #0009;
+}
+.info { background: transparent; color: var(--muted); border: 0; padding: 0 0.2em; font-size: 0.95rem; line-height: 1; cursor: help; font-weight: 400; box-shadow: none; }
+.info:hover:not(:disabled), .info:focus { color: var(--accent); filter: none; }
+.info[data-tip]::after { left: 0; transform: none; }
+/* The space under the page is only for the scores bar; without it, no extra scrolling. */
+.host:has(> #scores.hidden) { padding-bottom: 1.5rem; }
+/* Read-only category chips (a board with exactly 5 categories) */
+.cat-chip { display: inline-block; padding: 0.35em 0.8em; font-size: 0.92rem; font-weight: 600; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--text); cursor: default; }
+.cat-chip[data-tip] { cursor: help; }
+.cat-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Tighter setup so it fits a laptop screen with the category lists showing */
+#setup > .row:first-child { margin: 0.4rem 0 0.2rem; }
+#setup h2 { font-size: 1.3rem; margin: 0.2rem 0; }
+.themes { gap: 0.7rem; margin: 0.4rem 0 0.8rem; }
+.theme { flex-direction: row; justify-content: center; gap: 0.55rem; padding: 0.75rem 0.6rem; flex-wrap: wrap; }
+.theme-emoji { font-size: 1.6rem; }
+.theme small { flex-basis: 100%; text-align: center; }
+.theme-title { font-size: 1.4rem; }
+#customise .opt { padding: 0.3rem 0; }
+#customise .segbtn, .cat-chip { padding: 0.3em 0.7em; font-size: 0.88rem; }

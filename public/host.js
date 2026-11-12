@@ -138,8 +138,8 @@ function renderSetup() {
   const cards = packs.map((p) => h('button', {
     class: `theme ${p.id === setup.packId ? 'selected' : ''} ${p.missing ? 'soon' : ''}`, disabled: !!p.missing, data: { pack: p.id },
   }, h('div', { class: 'theme-emoji' }, p.emoji || '🎲'), h('div', { class: 'theme-name' }, p.name), p.missing ? h('small', {}, 'Coming soon') : null));
-  cards.push(h('button', { class: `theme ${setup.packId === 'custom' ? 'selected' : ''}`, data: { pack: 'custom' } },
-    h('div', { class: 'theme-emoji' }, '✨'), h('div', { class: 'theme-name' }, 'Make your own'), h('small', {}, 'Your topic, made with Claude')));
+  cards.push(h('button', { class: `theme ${setup.packId === 'custom' ? 'selected' : ''}`, data: { pack: 'custom' }, 'data-tip': 'Your topic, made with Claude', 'aria-description': 'Your topic, made with Claude' },
+    h('div', { class: 'theme-emoji' }, '✨'), h('div', { class: 'theme-name' }, 'Make your own')));
   fill('themes', cards);
   if (!packs.length) fill('themes', h('p', { class: 'muted' }, 'Loading themes…'));
   show('makeOwn', setup.packId === 'custom');
@@ -151,8 +151,8 @@ function renderSetup() {
   const inPlay = boardsInPlay(pack);
   $('themeTitle').textContent = `${pack.emoji || ''} ${pack.name}`;
   fill('themeBoards',
-    h('div', {}, inPlay.map((bi) => `Board ${bi + 1}: ${pack.boards[bi].name}`).join('  ·  ')),
-    pack.teams?.length ? [h('div', {}, 'Teams: ' + pack.teams.join(', '))] : []);
+    h('div', {}, inPlay.map((bi) => `Board ${bi + 1}: ${pack.boards[bi].name}`).join(' · ')),
+    pack.teams?.length ? [h('div', {}, pack.teams.join(' · '))] : []);
 
   seg('optBoards', pack.boards.length < 2 ? [['both', 'Board 1']] :
     [['both', 'Both'], ['1', 'Board 1 only'], ['2', 'Board 2 only']], pack.boards.length < 2 ? 'both' : setup.boards, (v) => (setup.boards = v));
@@ -167,12 +167,22 @@ function renderSetup() {
 
   // Category swapping: each board in play needs exactly 5.
   let allFive = true;
-  fill('optCats', pack.id === 'custom' ? [] : inPlay.map((bi) => {
+  // Every board in play lists its categories (hover one to see what it asks).
+  // Only a board with more than 5 lets the host pick; with exactly 5 they're shown read-only.
+  fill('optCats', inPlay.map((bi) => {
     const board = pack.boards[bi];
+    const canPick = pack.id !== 'custom' && board.categories.length > 5;
+    if (!canPick) {
+      return h('div', { class: 'opt' },
+        h('span', { class: 'opt-label' }, `Board ${bi + 1} categories`),
+        h('div', { class: 'seg' }, board.categories.map((c) =>
+          h('span', { class: 'cat-chip', tabindex: c.note ? '0' : null, 'data-tip': c.note || null, 'aria-label': c.note ? `${c.name}: ${c.note}` : null }, c.name))));
+    }
     const picks = catPicks(pack, bi);
     if (picks.length !== 5) allFive = false;
     const chips = board.categories.map((c, ci) => {
-      const b = h('button', { class: `segbtn ${picks.includes(ci) ? 'on' : ''}`, type: 'button', title: c.note || null }, c.name);
+      // The category's "how to play" line is its tooltip (hover, or focus with the keyboard).
+      const b = h('button', { class: `segbtn ${picks.includes(ci) ? 'on' : ''}`, type: 'button', 'data-tip': c.note || null, 'aria-description': c.note || null }, c.name);
       b.onclick = () => {
         const next = picks.includes(ci) ? picks.filter((x) => x !== ci) : [...picks, ci];
         setup.cats = { ...setup.cats, [pack.id]: { ...(setup.cats[pack.id] || {}), [bi]: next.map((i) => board.categories[i].name) } };
@@ -181,17 +191,14 @@ function renderSetup() {
       return b;
     });
     return h('div', { class: 'opt' },
-      h('span', { class: 'opt-label' }, `Board ${bi + 1} categories `, h('small', { class: picks.length === 5 ? 'ok' : 'bad' }, `${picks.length} of 5 picked`)),
-      h('div', { class: 'seg' }, chips),
-      h('div', { class: 'hint' }, 'ⓘ Pick the 5 categories to play. What each one asks is listed below.'),
-      // What each picked category is, so the host knows what they're choosing.
-      h('ul', { class: 'cat-help' }, picks.map((ci) => board.categories[ci]).map((c) =>
-        h('li', {}, h('b', {}, c.name), c.note ? ` — ${c.note}` : ''))));
+      h('span', { class: 'opt-label' }, `Board ${bi + 1} categories `,
+        h('button', { type: 'button', class: 'info', 'data-tip': 'Pick the 5 categories to play. Hover a category to see what it asks.', 'aria-label': 'Pick the 5 categories to play. Hover a category to see what it asks.' }, 'ⓘ'),
+        h('small', { class: picks.length === 5 ? 'ok' : 'bad' }, `${picks.length} of 5 picked`)),
+      h('div', { class: 'seg' }, chips));
   }));
   $('startGame').disabled = !allFive;
-  const modesOn = Object.values(setup.modes).some((v) => v !== false);
-  $('setupNote').textContent = !allFive ? 'Pick exactly 5 categories for each board (in Customise).'
-    : `Sparkle ${setup.sparkleEvery && modesOn ? `every ${setup.sparkleEvery} questions` : 'off'} · bonuses ${setup.bonuses ? 'on' : 'off'} · hidden Double ${setup.double ? 'on' : 'off'}`;
+  $('setupNote').textContent = allFive ? '' : 'Pick exactly 5 categories for each board (in Customise).';
+  show('setupNote', !allFive);
 }
 
 // ---- Make your own: build a prompt, paste Claude's reply, check it on the server, then start ----
@@ -413,6 +420,9 @@ $('themes').onclick = (e) => {
   saveSetup();
   renderSetup();
 };
+// Customise starts open; if the host collapses it, that's remembered.
+if (load('fbCustomiseOpen') === '0') $('customise').open = false;
+$('customise').addEventListener('toggle', () => save('fbCustomiseOpen', $('customise').open ? '1' : '0'));
 $('resetSetup').onclick = () => { setup = { ...SETUP_DEFAULTS, packId: setup.packId }; saveSetup(); renderSetup(); };
 $('finishGame').onclick = () => { if (confirm('Finish the game and show the winner?')) socket.emit('host:screen', 'winner'); };
 $('finishBig').onclick = emit('host:screen', 'winner');
