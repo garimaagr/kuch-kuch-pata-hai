@@ -1,3 +1,7 @@
+// Local settings (e.g. DATABASE_URL for testing) can live in a .env file, which git ignores.
+// On Render they come from the Environment settings instead.
+try { if (typeof process.loadEnvFile === 'function') process.loadEnvFile(require('path').join(__dirname, '.env')); } catch { /* no .env: fine */ }
+
 const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
@@ -10,6 +14,7 @@ const buzz = require('./buzz');
 const { makeLimiter, cleanText } = require('./limits');
 const { validatePack, defaultCategories, checkUploadedText } = require('./pack');
 const remotes = require('./remote');
+const db = require('./db');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -883,6 +888,12 @@ server.on('error', (err) => {
     process.exit(1);
   }
   throw err;
+});
+
+// Community boards need a database. Without one (or if it can't be reached) everything else still works.
+const dbReady = db.init().then((ok) => {
+  console.log(ok ? '  Community boards: database connected.\n' : process.env.DATABASE_URL ? '' : '  Community boards: off (no DATABASE_URL).\n');
+  return ok;
 });
 
 // 0.0.0.0 = listen on every network interface, so phones on the wifi can connect.

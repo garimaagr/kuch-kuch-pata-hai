@@ -96,6 +96,23 @@ Hosted on Render, the game has a public https link, so phones can join on any ne
 - Built-in limits: at most 20 games at once, 30 players per game, 5 new games per network every 10 minutes, 10 "Make your own" pack checks per game every 10 minutes, and games idle for 3 hours are deleted.
 - Every pasted or uploaded pack is treated as untrusted: it's checked again on the server when the game starts, and its text is always shown as plain text.
 
+## 🌐 Community boards: database setup (optional)
+
+Community boards need a free Postgres database from [Neon](https://neon.tech). Without one, the game works exactly as before and the community features stay hidden.
+
+**Create the database (once)**
+1. Sign up at neon.tech and create a project (the Free plan is enough). It comes with a `main` branch: that's the live database.
+2. Create a second branch for testing on your laptop: **Branches → Create branch**, e.g. `dev`.
+3. For each branch, click **Connect** and copy the connection string. It looks like `postgresql://user:password@ep-….neon.tech/neondb?sslmode=require`. Treat it like a password.
+
+**Live site (Render)**
+- In Render, open the service → **Environment**, add `DATABASE_URL` with the **main** branch's connection string, and add `ADMIN_PIN` with a long PIN of your own (for the `/admin` review page). Save; Render redeploys.
+
+**Your laptop**
+- Copy `.env.example` to `.env` (git ignores it) and set `DATABASE_URL` to the **dev** branch's connection string, plus an `ADMIN_PIN`. Then `npm start`.
+
+The tables are created by themselves when the server starts (`schema.sql`), along with 12 starting tags (Movies, TV, Music, …). Tags you later rename or delete in `/admin` stay that way. The server log says `Community boards: database connected.` when it's working. If it can't reach the database, it logs the reason and carries on without community boards.
+
 ## Game night checklist (home wifi)
 
 - **Same wifi:** everyone's phone must be on the same wifi as the laptop. A guest network usually won't work. Phones need wifi turned on, not mobile data.
@@ -138,4 +155,10 @@ Draw points are `DRAW_LEVELS` in `server.js`, and how often the Sparkle Round st
 
 ```bash
 npm test
+```
+
+The database tests are skipped unless `TEST_DATABASE_URL` is set. They work in a throwaway schema that's deleted afterwards, so a local Postgres or your Neon dev branch is fine:
+
+```bash
+TEST_DATABASE_URL=postgresql://localhost/buzzin_dev npm test
 ```
