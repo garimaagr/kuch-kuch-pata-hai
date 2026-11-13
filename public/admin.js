@@ -1,4 +1,4 @@
-// /admin: review community boards, manage tags and share codes.
+// /admin: review community boards and manage tags.
 // All text from the database goes in with textContent (via h()), never as HTML.
 
 const $ = (id) => document.getElementById(id);
@@ -78,8 +78,7 @@ async function load() {
     const view = $('aView');
     if (tab === 'pending') fill(view, await pendingView());
     else if (tab === 'approved') fill(view, await approvedView());
-    else if (tab === 'tags') fill(view, tagsView());
-    else fill(view, await codesView());
+    else fill(view, tagsView());
   } catch (err) { say(err.message, true); }
 }
 
@@ -167,7 +166,7 @@ function reviewCard(b) {
 
   return h('article', { class: 'a-card a-board' },
     h('h3', {}, `${b.emoji} ${b.name}`.trim()),
-    h('div', { class: 'muted' }, `Share code: ${b.share_label || '(deleted)'} · Submitted ${when(b.created_at)}`),
+    h('div', { class: 'muted' }, `Submitted ${when(b.created_at)}`),
     h('div', { class: 'a-grid' },
       h('label', {}, 'Made by'), madeBy,
       h('label', {}, 'Kid-friendly'), h('label', { class: 'a-check' }, kid, '👨‍👩‍👧 Suits children')),
@@ -264,35 +263,6 @@ function tagsView() {
         if (confirm(`Delete the tag ${t.name}?`)) run(() => api(`tags/${t.id}/delete`, {}), 'Tag deleted.');
       } }, 'Delete'));
   }))];
-}
-
-// ---- Share codes ----
-let newCode = null; // shown once, right after it's created
-async function codesView() {
-  const { codes } = await api('codes');
-  const label = h('input', { maxlength: 30, placeholder: 'Who is it for? e.g. Jeff' });
-  const form = h('form', { class: 'a-card a-row' }, label, h('button', { type: 'submit' }, 'Create share code'));
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    try { newCode = await api('codes', { label: label.value }); } catch (err) { return say(err.message, true); }
-    load();
-  };
-  let reveal = null;
-  if (newCode) {
-    const c = newCode;
-    newCode = null;
-    const copy = h('button', { class: 'secondary', onclick: async () => { try { await navigator.clipboard.writeText(c.code); say('Copied.'); } catch { say('Select the code and copy it.', true); } } }, 'Copy');
-    reveal = h('div', { class: 'a-card a-reveal' },
-      h('div', {}, `Share code for ${c.label}:`),
-      h('div', { class: 'a-row' }, h('code', { class: 'a-code' }, c.code), copy),
-      h('div', { class: 'a-warn' }, 'This is the only time it\'s shown. Send it to them now; only a hash is kept.'));
-  }
-  return [form, reveal, h('div', { class: 'a-card' }, codes.length ? codes.map((c) => h('div', { class: `a-coderow ${c.active ? '' : 'a-archived'}` },
-    h('b', {}, c.label),
-    h('span', { class: 'muted' }, `${c.uses} board${c.uses === 1 ? '' : 's'} shared · created ${when(c.created_at)}`),
-    c.active
-      ? h('button', { class: 'danger', onclick: () => { if (confirm(`Revoke ${c.label}'s code? It stops working immediately.`)) run(() => api(`codes/${c.id}/revoke`, {}), 'Revoked.'); } }, 'Revoke')
-      : h('span', { class: 'a-badge' }, 'Revoked'))) : h('p', { class: 'muted' }, 'No share codes yet.'))];
 }
 
 // ---- Start ----

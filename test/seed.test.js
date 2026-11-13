@@ -33,12 +33,10 @@ test('seeding adds pending boards for review, once', { skip: !URL && 'set TEST_D
 
   const first = await seedDir(undefined, quiet);
   assert.deepStrictEqual([first.added.length, first.skipped.length, first.failed.length], [4, 0, 0]);
-  const rows = (await db.query(`SELECT p.name, p.status, s.label, s.active, s.uses,
+  const rows = (await db.query(`SELECT p.name, p.status,
       (SELECT string_agg(t.name, ', ' ORDER BY t.name) FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = p.id) AS tags
-      FROM packs p JOIN share_codes s ON s.id = p.share_code_id ORDER BY p.name`)).rows;
-  assert.ok(rows.every((r) => r.status === 'pending' && r.label === 'Garima'));
-  assert.strictEqual(rows[0].active, false, 'the made-up seed code can\'t be used to share');
-  assert.strictEqual(rows[0].uses, 4);
+      FROM packs p ORDER BY p.name`)).rows;
+  assert.ok(rows.every((r) => r.status === 'pending'));
   assert.deepStrictEqual(rows.map((r) => r.tags), ['Desi, Movies', 'Sports', 'Movies, TV', 'World & Travel']);
   assert.deepStrictEqual((await community.listBoards()).boards, [], 'not public until approved');
 

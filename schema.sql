@@ -9,16 +9,6 @@ CREATE TABLE IF NOT EXISTS tags (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Invite codes for publishing. Only a hash of the code is stored.
-CREATE TABLE IF NOT EXISTS share_codes (
-  id         serial PRIMARY KEY,
-  code_hash  text NOT NULL UNIQUE,
-  label      text NOT NULL CHECK (char_length(label) BETWEEN 1 AND 30),
-  active     boolean NOT NULL DEFAULT true,
-  uses       integer NOT NULL DEFAULT 0,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
 CREATE TABLE IF NOT EXISTS packs (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name          text NOT NULL,
@@ -32,11 +22,14 @@ CREATE TABLE IF NOT EXISTS packs (
   status        text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'archived')),
   reject_reason text,
   content_hash  text NOT NULL UNIQUE,        -- SHA-256 of the normalised pack, to refuse duplicates
-  share_code_id integer REFERENCES share_codes(id) ON DELETE SET NULL,
   play_count    integer NOT NULL DEFAULT 0,
   created_at    timestamptz NOT NULL DEFAULT now(),
   reviewed_at   timestamptz
 );
+-- Share codes were removed (anyone can submit; everything is reviewed). Tidy up older databases.
+ALTER TABLE packs DROP COLUMN IF EXISTS share_code_id;
+DROP TABLE IF EXISTS share_codes;
+
 CREATE INDEX IF NOT EXISTS packs_status_created_idx ON packs (status, created_at);
 
 CREATE TABLE IF NOT EXISTS pack_tags (

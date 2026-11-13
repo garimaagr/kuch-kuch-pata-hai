@@ -3,7 +3,7 @@
 // as before and the community features stay hidden (db.enabled() is false).
 //
 // Rules: parameterised queries only (never build SQL from strings), and never log the connection
-// string, share codes, the admin PIN or session tokens.
+// string, the admin PIN or session tokens.
 
 const fs = require('fs');
 const path = require('path');

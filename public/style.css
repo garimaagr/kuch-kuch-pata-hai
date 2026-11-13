@@ -659,15 +659,11 @@ body.admin { padding: 0 0 3rem; }
 .admin button.danger { background: #5a1f33; color: #ffd6dc; border-color: #ff6b6b; }
 .a-badge { display: inline-block; margin-left: 0.5rem; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #3a2f6e; color: var(--muted); vertical-align: middle; }
 .a-archived { opacity: 0.65; }
-.a-tagrow, .a-coderow { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: 1px solid #2a2150; }
-.a-tagrow:last-child, .a-coderow:last-child { border-bottom: 0; }
+.a-tagrow { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding: 0.5rem 0; border-bottom: 1px solid #2a2150; }
+.a-tagrow:last-child { border-bottom: 0; }
 .a-tagrow input, .a-tagrow select { width: auto; margin: 0; }
 .a-tagrow input:not(.a-emoji) { flex: 1; min-width: 9rem; }
 .a-count { min-width: 9rem; }
-.a-coderow .muted { flex: 1; }
-.a-reveal { border-color: var(--accent); }
-.a-code { font-size: 1.4rem; letter-spacing: 0.08em; padding: 0.3rem 0.6rem; background: #0d0920; border-radius: 8px; user-select: all; }
-.a-warn { color: var(--accent); margin-top: 0.4rem; }
 .admin button:disabled { opacity: 0.4; cursor: default; }
 
 /* ---- Setup tabs and 🌐 Community ---- */

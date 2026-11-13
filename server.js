@@ -495,7 +495,7 @@ io.on('connection', (socket) => {
   // and then the prompt doesn't mention tags at all.
   on('host:tags', (cb) => reply(cb, { tags: db.tagNames() }));
 
-  // "Share with community": a checked pack goes to the review queue (needs a share code).
+  // "Share with community": a checked pack goes to the review queue (anyone can submit; you review it in /admin).
   on('community:submit', async (data, cb) => {
     if (typeof cb !== 'function') return;
     reply(cb, await community.submitPack(data, { ip: clientIp(socket) }));

@@ -113,20 +113,16 @@ Community boards need a free Postgres database from [Neon](https://neon.tech). W
 
 The tables are created by themselves when the server starts (`schema.sql`), along with 12 starting tags (Movies, TV, Music, …). Tags you later rename or delete in `/admin` stay that way. The server log says `Community boards: database connected.` when it's working. If it can't reach the database, it logs the reason and carries on without community boards.
 
-## 🌐 Community boards: share codes and review (`/admin`)
+## 🌐 Community boards: sharing and review (`/admin`)
 
-Publishing is invite-only, and every board is reviewed before anyone else can see it (yours too).
+Anyone with the site link can submit a board, and every board is reviewed before anyone else can see it (yours too).
 
 **Log in:** open `/admin` (e.g. `https://<your-site>/admin`) and enter your `ADMIN_PIN`. You stay logged in for 12 hours on that browser. After 5 wrong PINs, that network has to wait 15 minutes.
 
-**Share codes** (tab **Share codes**)
-- Type who it's for (e.g. "Jeff") and click **Create share code**. The code (like `BUZZ-7KQ2-M9XA`) is shown **once**: copy it and send it to them. Only a hash is stored, so it can't be shown again; make a new one if it's lost.
-- Each code can submit 3 boards a day. The list shows how many boards each code has shared. **Revoke** stops a code working immediately.
-
-**How people share:** in **✨ Make your own**, after **Check pack**, they open **🌐 Share with community**, enter the share code, optionally a "Made by" name, tick 1–3 tags, and click **Submit for review**.
+**How people share:** in **✨ Make your own**, after **Check pack**, they open **🌐 Share with community**, optionally add a "Made by" name, tick 1–3 tags, and click **Submit for review**. Each network can submit 5 boards a day (failed submits don't count), and the queue holds at most 100 waiting boards.
 
 **Review queue** (oldest first; at most 100 waiting)
-- Each board shows who shared it (the code's label), when, and a full preview: every category with its how-to-play line, every question with its answer, bonus and fun fact, and the Sparkle deck. Questions Claude wasn't sure of are marked ⚠️ and highlighted: check those facts.
+- Each board shows when it was submitted and a full preview: every category with its how-to-play line, every question with its answer, bonus and fun fact, and the Sparkle deck. Questions Claude wasn't sure of are marked ⚠️ and highlighted: check those facts.
 - Fix the tags, "Made by" and kid-friendly if needed.
 - If Claude suggested a new tag, **Link to existing tag**, **Create as new tag** (it's added to the tag list and to the next Make your own prompt), or **Ignore** it.
 - **Approve** (needs at least 1 tag) or **Reject** (with an optional note for yourself).
@@ -149,7 +145,7 @@ Publishing is invite-only, and every board is reviewed before anyone else can se
   DATABASE_URL="postgresql://…main branch…" npm run seed-community
   ```
 
-- Each file goes into the review queue as a **pending** board under the share code label "Garima" (made for this if you don't have one; it's switched off, so it can't be used to share). Review and approve them in `/admin` like any other board. Running it again skips boards that are already in the database.
+- Each file goes into the review queue as a **pending** board with no "Made by" (set it while reviewing if you like). Review and approve them in `/admin` like any other board. Running it again skips boards that are already in the database.
 
 ## Game night checklist (home wifi)
 

@@ -1,5 +1,5 @@
-// The /admin review page's server side: PIN login, sessions, and the review / tags / share-code API.
-// Parameterised SQL only. Never log the PIN, session tokens or share codes.
+// The /admin review page's server side: PIN login, sessions, and the review / tags API.
+// Parameterised SQL only. Never log the PIN or session tokens.
 
 const crypto = require('crypto');
 const express = require('express');
@@ -102,9 +102,9 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
   async function boards(where, order) {
     const { rows: packs } = await db.query(
       `SELECT p.id, p.name, p.emoji, p.made_by, p.kid_friendly, p.suggested_tag, p.board_names, p.teams, p.sparkle,
-              p.status, p.reject_reason, p.play_count, p.created_at, p.reviewed_at, s.label AS share_label,
+              p.status, p.reject_reason, p.play_count, p.created_at, p.reviewed_at,
               COALESCE((SELECT json_agg(pt.tag_id ORDER BY pt.tag_id) FROM pack_tags pt WHERE pt.pack_id = p.id), '[]') AS tag_ids
-         FROM packs p LEFT JOIN share_codes s ON s.id = p.share_code_id
+         FROM packs p
         WHERE ${where} ORDER BY ${order} LIMIT 200`,
     ); // `where` / `order` are fixed strings below, never user input
     return packs;
@@ -252,23 +252,6 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
       const res = await db.query('DELETE FROM tags WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM pack_tags WHERE tag_id = $1)', [id]);
       if (!res.rowCount) throw new Oops(409, 'Only unused tags can be deleted. Merge it into another tag instead.');
     });
-    return { ok: true };
-  }));
-
-  // ---- Share codes ----
-  router.get('/api/codes', authed(async () => ({
-    codes: (await db.query('SELECT id, label, active, uses, created_at FROM share_codes ORDER BY active DESC, created_at DESC')).rows,
-  })));
-
-  router.post('/api/codes', authed(async (req) => {
-    const res = await community.createShareCode(req.body?.label);
-    if (!res.ok) throw new Oops(400, res.error);
-    return { ok: true, code: res.code, label: res.label }; // the only time the code is ever shown
-  }));
-
-  router.post('/api/codes/:id/revoke', authed(async (req) => {
-    const res = await db.query('UPDATE share_codes SET active = false WHERE id = $1', [intId(req.params.id)]);
-    if (!res.rowCount) throw new Oops(404, 'No such code.');
     return { ok: true };
   }));
 

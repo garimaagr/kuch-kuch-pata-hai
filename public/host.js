@@ -464,7 +464,7 @@ function renderMakeOwn() {
 const MAX_SHARE_TAGS = 3;
 function newShare(preview) {
   return {
-    open: false, code: '', madeBy: load('fbMadeBy') || '',
+    open: false, madeBy: load('fbMadeBy') || '',
     tags: new Set((preview.tags || []).filter((t) => communityTags.includes(t)).slice(0, MAX_SHARE_TAGS)),
     kid: !!preview.kidFriendly, busy: false, done: false, error: null,
   };
@@ -481,9 +481,6 @@ function shareSection() {
     return box;
   }
 
-  const codeIn = h('input', { id: 'shareCode', autocomplete: 'off', spellcheck: 'false', maxlength: 20, placeholder: 'e.g. BUZZ-7KQ2-M9XA' });
-  codeIn.value = share.code;
-  codeIn.oninput = () => (share.code = codeIn.value);
   const madeIn = h('input', { id: 'shareMadeBy', maxlength: 30, placeholder: 'First name or nickname' });
   madeIn.value = share.madeBy;
   madeIn.oninput = () => (share.madeBy = madeIn.value);
@@ -506,7 +503,6 @@ function shareSection() {
   const suggested = custom.preview.suggestedTag;
   box.append(...[
     h('p', { class: 'muted' }, 'Send this board to the admin. Once approved, everyone can play it from the Community tab. Playing now isn\'t affected.'),
-    h('label', { for: 'shareCode' }, 'Share code'), codeIn,
     h('label', { for: 'shareMadeBy' }, 'Made by (optional)'), madeIn,
     h('div', { class: 'muted share-hint' }, 'Shown on the board. Leave empty to stay anonymous.'),
     h('div', { class: 'share-label' }, `Tags (1–${MAX_SHARE_TAGS})`),
@@ -521,14 +517,14 @@ function shareSection() {
 
 function submitShare() {
   if (!custom || !share || share.busy) return;
-  const problem = !share.code.trim() ? 'Enter your share code.' : !share.tags.size ? 'Tick at least 1 tag.' : null;
+  const problem = !share.tags.size ? 'Tick at least 1 tag.' : null;
   if (problem) { share.error = { title: problem }; return renderMakeOwn(); }
   share.busy = true;
   share.error = null;
   save('fbMadeBy', share.madeBy.trim() || null);
   renderMakeOwn();
   socket.emit('community:submit', {
-    pack: custom.pack, shareCode: share.code, madeBy: share.madeBy, tags: [...share.tags], kidFriendly: share.kid,
+    pack: custom.pack, madeBy: share.madeBy, tags: [...share.tags], kidFriendly: share.kid,
   }, (res) => {
     share.busy = false;
     if (res?.ok) share.done = true;

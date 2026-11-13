@@ -23,15 +23,6 @@ function pack(seed = ++n, extra = {}) {
   };
 }
 
-test('share codes look right, ignore case and dashes, and are stored only as a hash', () => {
-  const code = c.newShareCode();
-  assert.match(code, /^BUZZ-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
-  assert.strictEqual(c.hashCode(code), c.hashCode(code.toLowerCase().replace(/-/g, ' ')));
-  assert.strictEqual(c.hashCode(code), c.hashCode(code.slice(5)), 'the BUZZ- part is optional');
-  assert.notStrictEqual(c.hashCode(code), c.hashCode(c.newShareCode()));
-  assert.ok(!c.hashCode(code).includes(code));
-});
-
 test('the duplicate check ignores the name, tags, case and spacing, but not the questions', () => {
   const a = pack(1);
   const b = pack(1, { name: 'Another name', tags: ['TV'] });
@@ -60,11 +51,7 @@ test('submitting for review', { skip: !URL && 'set TEST_DATABASE_URL to run' }, 
   await db.init({ url: URL, schema, log: quiet });
   t.after(async () => { await db.close(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); });
 
-  const jeff = await c.createShareCode('Jeff');
-  assert.ok(jeff.ok && /^BUZZ-/.test(jeff.code));
-  const stored = await db.query('SELECT code_hash, label, uses FROM share_codes WHERE id = $1', [jeff.id]);
-  assert.notStrictEqual(stored.rows[0].code_hash, jeff.code, 'only the hash is stored');
-  const submit = (p, more = {}, ip = '10.0.0.1') => c.submitPack({ pack: p, shareCode: jeff.code, madeBy: 'Jeff', tags: ['Movies', 'TV'], kidFriendly: true, ...more }, { ip });
+  const submit = (p, more = {}, ip = '10.0.0.1') => c.submitPack({ pack: p, madeBy: 'Jeff', tags: ['Movies', 'TV'], kidFriendly: true, ...more }, { ip });
 
   await t.test('a good submission is saved as pending, one row per category', async () => {
     const p = pack(100, { tags: ['movies', 'Bollywood Nights'] });
@@ -83,20 +70,11 @@ test('submitting for review', { skip: !URL && 'set TEST_DATABASE_URL to run' }, 
     assert.strictEqual(cats[0].questions.length, 5);
     const tags = (await db.query('SELECT t.name FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = $1 ORDER BY t.name', [row.id])).rows.map((r) => r.name);
     assert.deepStrictEqual(tags, ['Movies', 'TV'], 'the tags the person ticked');
-    assert.strictEqual((await db.query('SELECT uses FROM share_codes WHERE id = $1', [jeff.id])).rows[0].uses, 1);
   });
 
   await t.test('a duplicate pack is refused, even renamed', async () => {
     const res = await submit(pack(100, { name: 'Renamed' }), {}, '10.0.0.2');
     assert.strictEqual(res.error, 'This board has already been shared.');
-  });
-
-  await t.test('a bad share code, or a revoked one, is refused', async () => {
-    assert.match((await submit(pack(), { shareCode: 'BUZZ-AAAA-AAAA' }, '10.0.0.3')).error, /isn't valid/);
-    assert.match((await submit(pack(), { shareCode: '' }, '10.0.0.3')).error, /isn't valid/);
-    const old = await c.createShareCode('Old');
-    await db.query('UPDATE share_codes SET active = false WHERE id = $1', [old.id]);
-    assert.match((await submit(pack(), { shareCode: old.code }, '10.0.0.3')).error, /isn't valid/);
   });
 
   await t.test('the form is checked: tags, made by, and the pack itself', async () => {
@@ -110,23 +88,17 @@ test('submitting for review', { skip: !URL && 'set TEST_DATABASE_URL to run' }, 
     assert.match(res.errors[0], /categories/);
   });
 
-  await t.test('a 4th submission with the same code in a day is refused', async () => {
-    assert.ok((await submit(pack(), {}, '10.0.1.1')).ok); // 2nd today (1st was the good submission)
-    assert.ok((await submit(pack(), {}, '10.0.1.2')).ok); // 3rd
-    assert.match((await submit(pack(), {}, '10.0.1.3')).error, /used 3 times today/);
+  await t.test('anyone can submit: no code needed', async () => {
+    assert.ok((await c.submitPack({ pack: pack(), tags: ['TV'] }, { ip: '10.0.1.1' })).ok);
   });
 
-  await t.test('6th submission from one network in a day is refused', async () => {
-    const codes = await Promise.all([1, 2].map((i) => c.createShareCode(`Net ${i}`)));
+  await t.test('6th submission from one network in a day is refused (failed ones don\'t count)', async () => {
+    assert.ok(!(await submit(pack(), { tags: [] }, '10.0.2.1')).ok);
     let ok = 0;
-    for (let i = 0; i < 5; i++) ok += (await submit(pack(), { shareCode: codes[i % 2].code }, '10.0.2.1')).ok ? 1 : 0;
+    for (let i = 0; i < 5; i++) ok += (await submit(pack(), {}, '10.0.2.1')).ok ? 1 : 0;
     assert.strictEqual(ok, 5);
-    assert.match((await submit(pack(), { shareCode: codes[0].code }, '10.0.2.1')).error, /shared 5 boards today/);
-  });
-
-  await t.test('wrong codes are rate limited per network', async () => {
-    for (let i = 0; i < 10; i++) await submit(pack(), { shareCode: `BUZZ-WRNG-${String(i).padStart(4, 'X')}` }, '10.0.3.1');
-    assert.match((await submit(pack(), {}, '10.0.3.1')).error, /Too many wrong share codes/);
+    assert.match((await submit(pack(), {}, '10.0.2.1')).error, /shared 5 boards today/);
+    assert.ok((await submit(pack(), {}, '10.0.2.2')).ok, 'another network is fine');
   });
 
   await t.test('the review queue holds at most 100 boards', async () => {
@@ -134,8 +106,7 @@ test('submitting for review', { skip: !URL && 'set TEST_DATABASE_URL to run' }, 
     for (let i = have; i < c.MAX_PENDING; i++) {
       await db.query("INSERT INTO packs (name, content_hash) VALUES ('Filler', $1)", [`filler-${i}`]);
     }
-    const fresh = await c.createShareCode('Fresh');
-    assert.strictEqual((await submit(pack(), { shareCode: fresh.code }, '10.0.4.1')).error, 'The review queue is full, try again later.');
+    assert.strictEqual((await submit(pack(), {}, '10.0.4.1')).error, 'The review queue is full, try again later.');
   });
 });
 
@@ -147,16 +118,12 @@ test('public: only approved boards are listed or loadable', { skip: !URL && 'set
   await db.init({ url: URL, schema, log: quiet });
   t.after(async () => { await db.close(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); });
 
-  const code = (await c.createShareCode('Test')).code;
   let ip = 0;
   const share = async (p, tags, extra = {}) => {
-    assert.ok((await c.submitPack({ pack: p, shareCode: code, tags, madeBy: 'Secret Sam', ...extra }, { ip: `ip${++ip}` })).ok);
+    assert.ok((await c.submitPack({ pack: p, tags, madeBy: 'Secret Sam', ...extra }, { ip: `ip${++ip}` })).ok);
     return (await db.query('SELECT id FROM packs WHERE content_hash = $1', [c.contentHash(validatePack(p).pack)])).rows[0].id;
   };
-  await db.query("UPDATE share_codes SET uses = 0"); // not limited per code here: make more codes as needed
-  const codes = [code, ...(await Promise.all([1, 2, 3].map(async (i) => (await c.createShareCode('More ' + i)).code)))];
-  let k = 0;
-  const shareAny = (p, tags, extra) => share(p, tags, { shareCode: codes[Math.floor(k++ / 3)], ...extra });
+  const shareAny = share;
 
   const spooky = await shareAny(pack(201, { name: 'Spooky <Night>', sparkle: { charades: ['Ghost'] } }), ['Holidays'], { kidFriendly: false });
   const toons = await shareAny(pack(202, { name: 'Saturday Toons' }), ['Cartoons & Kids', 'TV'], { kidFriendly: true });
@@ -195,7 +162,7 @@ test('public: only approved boards are listed or loadable', { skip: !URL && 'set
   assert.ok(checked.ok, checked.errors?.join('\n'));
   assert.strictEqual(checked.pack.boards[0].categories[0].note, 'Name it.');
   assert.deepStrictEqual(checked.pack.sparkle.charades, ['Ghost']);
-  assert.ok(!('status' in loaded.meta) && !('share_code_id' in loaded.meta));
+  assert.ok(!('status' in loaded.meta));
 
   // Plays count; archived boards disappear; bad ids are just "not found".
   await c.countPlay(toons);

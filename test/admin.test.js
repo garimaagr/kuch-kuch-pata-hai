@@ -64,7 +64,7 @@ test('POSTs need the same origin and a session', async (t) => {
   assert.strictEqual((await call('login', { pin: PIN }, { origin: null })).status, 403, 'no Origin header');
   assert.strictEqual((await call('tags', { name: 'X' })).status, 401, 'no session');
   assert.strictEqual((await call('login', { pin: PIN })).status, 200);
-  assert.strictEqual((await call('codes', { label: 'Jeff' }, { origin: 'https://evil.example' })).status, 403, 'logged in, but from another site');
+  assert.strictEqual((await call('tags', { name: 'Jeff' }, { origin: 'https://evil.example' })).status, 403, 'logged in, but from another site');
   assert.strictEqual((await call('tags', { name: 'X' }, { keepCookie: false })).status, 401);
 });
 
@@ -95,16 +95,11 @@ test('review flow', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async (t) 
   const { call } = await server(t);
   assert.strictEqual((await call('login', { pin: PIN })).status, 200);
 
-  // A share code made in admin is shown once; only its hash is kept.
-  const made = (await call('codes', { label: '<b>Jeff</b>' })).body;
-  assert.match(made.code, /^BUZZ-/);
-  const listed = (await call('codes')).body.codes;
-  assert.strictEqual(listed[0].label, '<b>Jeff</b>');
-  assert.ok(!JSON.stringify(listed).includes(made.code), 'the code is never listed again');
+  assert.strictEqual((await call('codes')).status, 404, 'share codes are gone');
 
   const vals = [100, 200, 300, 400, 500];
   const pack = (seed, tags) => ({ format: 'buzz-pack-v2', name: `Board ${seed}`, tags, boards: [{ name: 'B1', categories: [1, 2, 3, 4, 5].map((c) => ({ name: `C${c}`, questions: vals.map((v) => ({ value: v, question: `${seed}-${c}-${v}?`, answer: 'A', verify: v === 500 })) })) }] });
-  const sub = (seed, tags, chosen) => community.submitPack({ pack: pack(seed, tags), shareCode: made.code, tags: chosen }, { ip: 'x' + seed });
+  const sub = (seed, tags, chosen) => community.submitPack({ pack: pack(seed, tags), tags: chosen }, { ip: 'x' + seed });
   assert.ok((await sub(1, ['Anime'], ['Movies'])).ok);
   assert.ok((await sub(2, [], ['TV'])).ok);
 
@@ -112,7 +107,6 @@ test('review flow', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async (t) 
   let pending = (await call('pending')).body.boards;
   assert.deepStrictEqual(pending.map((b) => b.name), ['Board 1', 'Board 2']);
   assert.strictEqual(pending[0].suggested_tag, 'Anime');
-  assert.strictEqual(pending[0].share_label, '<b>Jeff</b>');
   assert.strictEqual(pending[0].boards[0].categories.length, 5);
   assert.strictEqual(pending[0].boards[0].categories[0].questions[4].verify, true);
   const [one, two] = pending;
@@ -153,9 +147,4 @@ test('review flow', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async (t) 
   assert.deepStrictEqual(after, ['Cartoons & Kids', 'Movies']);
   assert.ok(!db.tagNames().includes('Anime & Manga'));
   assert.strictEqual((await call(`tags/${tagsByName.Gaming}/delete`, {})).status, 200, 'unused');
-
-  // Revoking a code stops it working.
-  const code = (await call('codes')).body.codes[0];
-  assert.strictEqual((await call(`codes/${code.id}/revoke`, {})).status, 200);
-  assert.match((await sub(3, [], ['TV'])).error, /isn't valid/);
 });
