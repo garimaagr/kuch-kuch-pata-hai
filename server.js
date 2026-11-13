@@ -4,7 +4,6 @@ try { if (typeof process.loadEnvFile === 'function') process.loadEnvFile(require
 
 const crypto = require('crypto');
 const express = require('express');
-const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
@@ -12,11 +11,12 @@ const { Server } = require('socket.io');
 const QRCode = require('qrcode');
 const buzz = require('./buzz');
 const { makeLimiter, cleanText } = require('./limits');
-const { validatePack, defaultCategories, checkUploadedText } = require('./pack');
+const { validatePack, defaultCategories, chosenCategories, checkUploadedText } = require('./pack');
 const remotes = require('./remote');
 const db = require('./db');
 const community = require('./community');
 const { adminRouter } = require('./admin');
+const featured = require('./featured');
 
 const PORT = Number(process.env.PORT) || 3000;
 // When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
@@ -305,26 +305,8 @@ function publicSparkle(room) {
 }
 
 // ---- Packs ----
-// Built-in packs live in packs/<id>.json. Ids come from this folder, never from a visitor.
-const PACK_DIR = path.join(__dirname, 'packs');
-const DEFAULT_PACK = 'desi';
-
-// Reads and validates a built-in pack. Re-read each game, so hand edits show up on New game.
-function loadBuiltinPack(id, opts = {}) {
-  const ids = fs.readdirSync(PACK_DIR).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5));
-  if (!ids.includes(id)) throw new Error(`No pack called "${id}"`);
-  const res = validatePack(JSON.parse(fs.readFileSync(path.join(PACK_DIR, id + '.json'), 'utf8')), { kind: 'builtin', ...opts });
-  if (!res.ok) throw new Error(`packs/${id}.json: ${res.errors.join(' ')}`);
-  return res.pack;
-}
-
-// The theme cards on the setup screen, in order. A theme without a pack file shows as "coming soon".
-const THEMES = [
-  { id: 'desi', name: 'Desi Night', emoji: '🎬' },
-  { id: 'world', name: 'World Trivia', emoji: '🌍' },
-  { id: 'tv', name: 'TV & Movies', emoji: '📺' },
-  { id: 'sports', name: 'Sports', emoji: '🏆' },
-];
+// ⭐ Featured themes (packs/*.json plus the admin's extras) come from featured.js.
+const { THEMES, DEFAULT_PACK, loadBuiltinPack } = featured;
 
 // What the setup screen needs: names, boards and categories (no questions or answers).
 function packSummaries() {
@@ -342,14 +324,6 @@ function packSummaries() {
       return { ...t, missing: true };
     }
   });
-}
-
-// Checks the host's chosen categories for one board: exactly 5 different valid indexes, else the defaults.
-function chosenCategories(board, picks) {
-  const ok = Array.isArray(picks) && picks.length === 5 && new Set(picks).size === 5 &&
-    picks.every((i) => Number.isInteger(i) && i >= 0 && i < board.categories.length);
-  const cats = ok ? [...picks].sort((a, b) => a - b).map((i) => board.categories[i]) : defaultCategories(board);
-  return cats.map((c) => ({ category: c.name, note: c.note, questions: c.questions }));
 }
 
 // The host's game options, checked. Anything odd falls back to the default.

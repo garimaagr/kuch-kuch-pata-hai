@@ -249,6 +249,14 @@ function defaultCategories(board) {
   return flagged.length === 5 ? flagged : board.categories.slice(0, 5);
 }
 
+// Checks the host's chosen categories for one board: exactly 5 different valid indexes, else the defaults.
+function chosenCategories(board, picks) {
+  const ok = Array.isArray(picks) && picks.length === 5 && new Set(picks).size === 5 &&
+    picks.every((i) => Number.isInteger(i) && i >= 0 && i < board.categories.length);
+  const cats = ok ? [...picks].sort((a, b) => a - b).map((i) => board.categories[i]) : defaultCategories(board);
+  return cats.map((c) => ({ category: c.name, note: c.note, questions: c.questions }));
+}
+
 // What the "Make your own" screen shows after a check: names, counts, and a "check these" list
 // (questions marked verify). Takes a pack that already passed validatePack.
 function packPreview(pack) {
@@ -282,4 +290,4 @@ function checkUploadedText(text, { fallbackName, knownTags = null } = {}) {
   return { ok: true, pack: res.pack, preview: packPreview(res.pack), csv: packToTable(res.pack) };
 }
 
-module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_TEAMS, TEAM_NAME_MAX, MAX_TAGS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, packPreview, checkUploadedText };
+module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_TEAMS, TEAM_NAME_MAX, MAX_TAGS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, chosenCategories, packPreview, checkUploadedText };

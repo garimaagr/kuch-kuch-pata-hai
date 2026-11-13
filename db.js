@@ -41,6 +41,7 @@ function sslFor(url) {
 
 let pool = null;
 let ready = false;
+let extrasCache = []; // ⭐ featured_extras rows, in the order they were added
 let tagCache = []; // [{ id, slug, name, emoji }], kept in memory: the prompt and pack checks need it often
 
 // Connects, creates the tables if needed and adds the starting tags once.
@@ -75,6 +76,7 @@ async function init({ url = process.env.DATABASE_URL || '', schema = '', log = c
     }
     ready = true;
     await refreshTags();
+    await refreshExtras();
     return true;
   } catch (err) {
     // Only the error code/message: never the connection string.
@@ -121,6 +123,7 @@ async function transaction(fn) {
 async function close() {
   ready = false;
   tagCache = [];
+  extrasCache = [];
   const p = pool;
   pool = null;
   if (p) await p.end().catch(() => {});
@@ -138,7 +141,21 @@ async function refreshTags() {
   }
   return tagCache;
 }
+// Reloads the ⭐ Featured extras (after the admin adds or removes one). On a database error the old list stays.
+async function refreshExtras() {
+  if (!ready) return;
+  try {
+    extrasCache = (await pool.query(
+      `SELECT x.id, x.theme_id, x.board_index, x.name, x.note, x.questions, x.added_at, p.name AS source_pack_name
+         FROM featured_extras x LEFT JOIN categories c ON c.id = x.source_category_id LEFT JOIN packs p ON p.id = c.pack_id
+        ORDER BY x.added_at, x.id`)).rows;
+  } catch (err) {
+    console.error(`Couldn't load the Featured extras (${err.code || err.message}).`);
+  }
+}
+const featuredExtras = () => (ready ? extrasCache : []);
+
 const tags = () => (ready ? tagCache : []);
 const tagNames = () => tags().map((t) => t.name);
 
-module.exports = { init, query, transaction, close, enabled, refreshTags, tags, tagNames, slugify, sslFor, STARTING_TAGS };
+module.exports = { init, query, transaction, close, enabled, refreshTags, refreshExtras, featuredExtras, tags, tagNames, slugify, sslFor, STARTING_TAGS };

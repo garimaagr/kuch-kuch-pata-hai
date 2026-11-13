@@ -1,4 +1,4 @@
-// /admin: review community boards and manage tags.
+// /admin: review community boards, manage tags, and ⭐ add categories to the Featured themes.
 // All text from the database goes in with textContent (via h()), never as HTML.
 
 const $ = (id) => document.getElementById(id);
@@ -68,16 +68,18 @@ $('aLogout').onclick = async () => { await api('logout', {}).catch(() => {}); lo
 // ---- Tabs ----
 let tab = 'pending';
 let tags = []; // [{ id, name, emoji, boards, approved }]
+let featured = { max: 8, themes: [] }; // ⭐ Featured themes: boards, categories used (of 8), extras
 const tagName = (id) => { const t = tags.find((x) => x.id === id); return t ? `${t.emoji} ${t.name}`.trim() : '?'; };
 document.querySelectorAll('.a-tabs button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; load(); }));
 
 async function load() {
   document.querySelectorAll('.a-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   try {
-    tags = (await api('tags')).tags;
+    [tags, featured] = await Promise.all([api('tags').then((d) => d.tags), api('featured')]);
     const view = $('aView');
     if (tab === 'pending') fill(view, await pendingView());
     else if (tab === 'approved') fill(view, await approvedView());
+    else if (tab === 'featured') fill(view, featuredView());
     else fill(view, tagsView());
   } catch (err) { say(err.message, true); }
 }
@@ -173,10 +175,61 @@ function reviewCard(b) {
       h('label', {}, 'Kid-friendly'), h('label', { class: 'a-check' }, kid, '👨‍👩‍👧 Suits children')),
     h('div', { class: 'a-label' }, `Tags (1–${MAX_TAGS})`), picker, suggestBox,
     preview(b),
+    toFeatured(b),
     h('div', { class: 'a-row a-actions' },
       h('button', { onclick: approve }, '✅ Approve'),
       reason,
       h('button', { class: 'danger', onclick: reject }, '✕ Reject')));
+}
+
+// ⭐ Add categories to Featured: tick categories from this board, pick a theme's board, add.
+// Each becomes an optional category on that board (its own copy); this board's status doesn't change.
+function toFeatured(b) {
+  const ticked = new Set();
+  const boxes = b.boards.flatMap((bd, bi) => bd.categories.map((c) => {
+    const cb = h('input', { type: 'checkbox', onchange: () => { cb.checked ? ticked.add(c.id) : ticked.delete(c.id); } });
+    return h('label', { class: 'a-tag' }, cb, b.boards.length > 1 ? `Board ${bi + 1} · ${c.name}` : c.name);
+  }));
+  const where = h('select', { 'aria-label': 'Featured theme and board' },
+    h('option', { value: '' }, 'Pick a Featured theme and board…'),
+    featured.themes.filter((t) => !t.missing && t.boards.length).map((t) => h('optgroup', { label: `${t.emoji} ${t.name}`.trim() },
+      t.boards.map((bd) => h('option', { value: `${t.id}:${bd.index}`, disabled: bd.free === 0 },
+        `${t.name} › ${bd.name} (${bd.free ? `${bd.free} free` : 'full'})`)))));
+  const add = () => {
+    if (!ticked.size) return say('Tick at least 1 category.', true);
+    if (!where.value) return say('Pick a Featured theme and board.', true);
+    const [themeId, bi] = where.value.split(':');
+    const target = featured.themes.find((t) => t.id === themeId)?.boards[Number(bi)];
+    if (target && ticked.size > target.free) return say(`That board has room for ${target.free} more. Tick fewer.`, true);
+    // In the order shown on the board, so Customise lists them the same way.
+    const order = b.boards.flatMap((bd) => bd.categories.map((c) => c.id)).filter((id) => ticked.has(id));
+    run(async () => { const r = await api('featured', { themeId, boardIndex: Number(bi), categoryIds: order }); say(r.message); });
+  };
+  return h('details', { class: 'a-featured' },
+    h('summary', {}, '⭐ Add categories to Featured'),
+    h('p', { class: 'muted' }, `They're added as optional categories (off by default in Customise), with the board's points. Up to ${featured.max} categories per board. This board stays in the queue.`),
+    h('div', { class: 'a-tags' }, boxes),
+    h('div', { class: 'a-row' }, where, h('button', { class: 'secondary', onclick: add }, '⭐ Add to Featured')));
+}
+
+// ⭐ Featured extras: every theme's boards and the categories added to them, each with Remove.
+function featuredView() {
+  const themes = featured.themes.filter((t) => !t.missing && t.boards.length);
+  const total = themes.reduce((n, t) => n + t.boards.reduce((m, bd) => m + bd.extras.length, 0), 0);
+  return [
+    h('p', { class: 'muted' }, total ? 'Categories added to the Featured themes. They show as optional in Customise.' : 'No extras yet. Add them from a board in the Review queue (⭐ Add categories to Featured).'),
+    themes.map((t) => h('article', { class: 'a-card' },
+      h('h3', {}, `${t.emoji} ${t.name}`.trim()),
+      t.boards.map((bd) => h('div', { class: 'a-fboard' },
+        h('div', { class: 'a-label' }, `${bd.name} · ${bd.categories} of ${featured.max} categories`),
+        bd.extras.length ? h('ul', { class: 'a-extras' }, bd.extras.map((x) => h('li', { class: 'a-row a-spread' },
+          h('div', {}, h('b', {}, x.name), h('span', { class: 'muted' }, ` · added ${when(x.addedAt)}${x.fromBoard ? ` from “${x.fromBoard}”` : ''}`)),
+          h('button', { class: 'secondary', onclick: () => {
+            if (!confirm(`Remove “${x.name}” from ${t.name} › ${bd.name}?`)) return;
+            run(() => api(`featured/${x.id}/remove`, {}), `Removed “${x.name}”.`);
+          } }, 'Remove'))))
+          : h('div', { class: 'muted' }, 'No extras.'))))),
+  ];
 }
 
 // Every category, then every question with its answer, bonus and fun fact. ⚠️ marks "verify".

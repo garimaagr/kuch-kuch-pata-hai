@@ -657,6 +657,14 @@ body.admin { padding: 0 0 3rem; }
 .a-flag { background: rgba(255, 107, 107, 0.12); border-left: 3px solid #ff6b6b; border-radius: 6px; padding: 0.4rem 0.6rem; margin: 0.4rem 0; }
 .a-verify { background: rgba(255, 201, 51, 0.12); border-left: 3px solid var(--accent); padding-left: 0.4rem; }
 .a-actions { margin-top: 0.8rem; }
+.a-featured { margin: 0.8rem 0; padding: 0.6rem 0.9rem; border: 1px dashed var(--line-2); border-radius: 10px; }
+.a-featured summary { cursor: pointer; font-weight: 600; }
+.a-featured p { margin: 0.4rem 0 0.6rem; }
+.a-featured .a-row { margin-top: 0.6rem; }
+.a-featured select { flex: 1 1 16rem; min-width: 0; margin: 0; }
+.a-fboard { margin-top: 0.6rem; }
+.a-extras { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; gap: 0.3rem; }
+.a-extras li { padding: 0.35rem 0.6rem; background: #140e2c; border-radius: 8px; gap: 0.6rem; }
 .admin button.danger { background: #5a1f33; color: #ffd6dc; border-color: #ff6b6b; }
 .a-badge { display: inline-block; margin-left: 0.5rem; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #3a2f6e; color: var(--muted); vertical-align: middle; }
 .a-archived { opacity: 0.65; }

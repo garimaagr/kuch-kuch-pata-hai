@@ -130,6 +130,8 @@ Anyone with the site link can submit a board, and every board is reviewed before
 
 **Approved:** every approved board with its tags and play count. **Edit** changes tags, "Made by" and kid-friendly; **Archive** hides a board from Community (and **Unarchive** brings it back).
 
+**⭐ Add categories to Featured:** on a board in the Review queue, open **⭐ Add categories to Featured**, tick categories, pick a Featured theme and board (it shows how many slots are free; full boards can't be picked) and click **Add to Featured**. Each one is copied onto that board with its points (100–500 or 200–1000, by question order) and shows in that theme's Customise as an optional category, off by default. A board holds at most 8 categories. The shared board itself stays in the queue: approve it, reject it or leave it. The **⭐ Featured extras** tab lists them; **Remove** takes one off again. (They're kept in the database, so without one the Featured themes are just their files.)
+
 **Tags:** add a tag, rename it or change its emoji, **Merge** one tag into another (its boards move over and the old tag is deleted), or **Delete** a tag nobody uses.
 
 **Players see the 🌐 Community tab** on the setup screen once at least 1 board is approved. Until then it only shows ⭐ Featured and ✨ Make your own. It opens on 🎲 Surprise me, a tile for each tag (**Browse** or **🎲** a random board in it) and ✨ New this week (boards approved in the last 7 days). Searching matches board names, tags, "Made by" and category names. Kids only filters everything to kid-friendly boards.

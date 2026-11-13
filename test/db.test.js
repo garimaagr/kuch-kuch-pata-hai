@@ -41,7 +41,7 @@ test('tables are created, starting tags added once, and setup can run again', { 
     assert.strictEqual(await db.init({ url: URL, schema, log: quiet }), true);
     assert.ok(db.enabled());
     const tables = (await db.query('SELECT table_name FROM information_schema.tables WHERE table_schema = $1 ORDER BY 1', [schema])).rows.map((r) => r.table_name);
-    assert.deepStrictEqual(tables, ['app_meta', 'categories', 'pack_tags', 'packs', 'tags']);
+    assert.deepStrictEqual(tables, ['app_meta', 'categories', 'featured_extras', 'pack_tags', 'packs', 'tags']);
 
     const tags = (await db.query('SELECT slug, name, emoji FROM tags ORDER BY id')).rows;
     assert.strictEqual(tags.length, 12);

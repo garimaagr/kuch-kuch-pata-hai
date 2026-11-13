@@ -1,4 +1,4 @@
-// The /admin review page's server side: PIN login, sessions, and the review / tags API.
+// The /admin review page's server side: PIN login, sessions, and the review / tags / ⭐ Featured extras API.
 // Parameterised SQL only. Never log the PIN or session tokens.
 
 const crypto = require('crypto');
@@ -6,7 +6,8 @@ const express = require('express');
 const db = require('./db');
 const community = require('./community');
 const { makeLimiter, cleanText, TAG_PATTERN } = require('./limits');
-const { MAX_TAGS } = require('./pack');
+const { MAX_TAGS, validatePack } = require('./pack');
+const featured = require('./featured');
 
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const COOKIE = 'buzzin_admin';
@@ -124,12 +125,12 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
     const packs = await boards("p.status = 'pending'", 'p.created_at ASC');
     const ids = packs.map((p) => p.id);
     const { rows: cats } = ids.length
-      ? await db.query('SELECT pack_id, board_index, position, name, description, questions FROM categories WHERE pack_id = ANY($1::uuid[]) ORDER BY board_index, position', [ids])
+      ? await db.query('SELECT id, pack_id, board_index, position, name, description, questions FROM categories WHERE pack_id = ANY($1::uuid[]) ORDER BY board_index, position', [ids])
       : { rows: [] };
     for (const p of packs) {
       p.boards = (p.board_names || []).map((name, bi) => ({
         name,
-        categories: cats.filter((c) => c.pack_id === p.id && c.board_index === bi).map((c) => ({ name: c.name, note: c.description, questions: c.questions })),
+        categories: cats.filter((c) => c.pack_id === p.id && c.board_index === bi).map((c) => ({ id: c.id, name: c.name, note: c.description, questions: c.questions })),
       }));
     }
     return { boards: packs };
@@ -262,6 +263,72 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
       const res = await db.query('DELETE FROM tags WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM pack_tags WHERE tag_id = $1)', [id]);
       if (!res.rowCount) throw new Oops(409, 'Only unused tags can be deleted. Merge it into another tag instead.');
     });
+    return { ok: true };
+  }));
+
+  // ---- ⭐ Featured extras: categories from shared boards added to a Featured theme ----
+  // Every theme's boards, how many categories each has (of 8) and the extras on it.
+  router.get('/api/featured', authed(async () => ({ max: featured.MAX_CATEGORIES, themes: featured.themeBoards() })));
+
+  // Adds categories (by id) to one board of a Featured theme. Each becomes its own copy, with the
+  // board's point values in question order. The shared board itself isn't changed (its status stays).
+  router.post('/api/featured', authed(async (req) => {
+    const b = req.body || {};
+    const themeId = typeof b.themeId === 'string' ? b.themeId : '';
+    if (!featured.isTheme(themeId)) throw new Oops(400, 'Pick a Featured theme.');
+    let file;
+    try { file = featured.loadFilePack(themeId); } catch { throw new Oops(409, 'That theme isn\'t available.'); }
+    const bi = b.boardIndex;
+    if (!Number.isInteger(bi) || bi < 0 || bi >= file.boards.length) throw new Oops(400, 'Pick a board.');
+    const ids = Array.isArray(b.categoryIds) ? b.categoryIds.map(intId) : [];
+    if (!ids.length) throw new Oops(400, 'Tick at least 1 category.');
+    if (ids.some((id) => id == null) || new Set(ids).size !== ids.length || ids.length > featured.MAX_CATEGORIES) throw new Oops(400, 'Those categories don\'t look right. Reload the page.');
+    const where = `${file.name} › ${file.boards[bi].name}`;
+
+    await db.transaction(async (c) => {
+      // One add at a time, so two at once can't both squeeze into the last free slot.
+      await c.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['featured_extras']);
+      const { rows: cats } = await c.query('SELECT id, name, description, questions FROM categories WHERE id = ANY($1::int[])', [ids]);
+      if (cats.length !== ids.length) throw new Oops(404, 'One of those categories no longer exists. Reload the page.');
+      const { rows: have } = await c.query('SELECT name, source_category_id FROM featured_extras WHERE theme_id = $1 AND board_index = $2', [themeId, bi]);
+
+      const used = file.boards[bi].categories.length + have.length;
+      const free = featured.MAX_CATEGORIES - used;
+      if (free <= 0) throw new Oops(409, `${where} is full (${featured.MAX_CATEGORIES} categories). Remove one of its extras first.`);
+      if (ids.length > free) throw new Oops(409, `${where} has room for ${free} more categor${free === 1 ? 'y' : 'ies'} (it has ${used} of ${featured.MAX_CATEGORIES}). Tick fewer.`);
+      const taken = new Set([...file.boards[bi].categories.map((x) => x.name), ...have.map((x) => x.name)].map((n) => n.toLowerCase()));
+      const added = new Set(have.map((x) => x.source_category_id));
+      for (const cat of cats) {
+        if (added.has(cat.id)) throw new Oops(409, `"${cat.name}" is already on ${where}.`);
+        if (taken.has(cat.name.toLowerCase())) throw new Oops(409, `${where} already has a category called "${cat.name}".`);
+        taken.add(cat.name.toLowerCase());
+      }
+
+      // Check the theme with these added, using the same rules as the game.
+      const extras = cats.map((cat) => featured.extraCategory({ name: cat.name, note: cat.description, questions: cat.questions, board_index: bi }));
+      const trial = { ...file, boards: file.boards.map((bd, i) => (i === bi ? { ...bd, categories: [...bd.categories, ...extras] } : bd)) };
+      const checked = validatePack(trial, { kind: 'builtin' });
+      if (!checked.ok) throw new Oops(400, `Can't add those: ${checked.errors[0]}`);
+      const clean = checked.pack.boards[bi].categories.slice(-extras.length);
+
+      // Stored in the order ticked (the same order they show in Customise).
+      for (const id of ids) {
+        const src = clean[cats.findIndex((cat) => cat.id === id)];
+        await c.query(
+          'INSERT INTO featured_extras (theme_id, board_index, name, note, questions, source_category_id) VALUES ($1, $2, $3, $4, $5, $6)',
+          [themeId, bi, src.name, src.note || null, JSON.stringify(src.questions), id],
+        );
+      }
+    });
+    await db.refreshExtras();
+    return { ok: true, message: `Added ${ids.length} categor${ids.length === 1 ? 'y' : 'ies'} to ${where}. They're optional in Customise.` };
+  }));
+
+  router.post('/api/featured/:id/remove', authed(async (req) => {
+    const id = intId(req.params.id);
+    const res = id == null ? { rowCount: 0 } : await db.query('DELETE FROM featured_extras WHERE id = $1', [id]);
+    if (!res.rowCount) throw new Oops(404, 'That extra is already gone.');
+    await db.refreshExtras();
     return { ok: true };
   }));
 

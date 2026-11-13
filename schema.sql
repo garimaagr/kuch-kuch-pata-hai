@@ -55,6 +55,21 @@ CREATE TABLE IF NOT EXISTS categories (
   UNIQUE (pack_id, board_index, position)
 );
 
+-- ⭐ Categories the admin added to a Featured theme from a shared board. Each row is its own copy
+-- (questions included), so the theme keeps it even if the shared board is later deleted.
+-- Extras are optional in the game (off by default in Customise). At most 8 categories per board.
+CREATE TABLE IF NOT EXISTS featured_extras (
+  id                 serial PRIMARY KEY,
+  theme_id           text NOT NULL,                 -- packs/<theme_id>.json
+  board_index        smallint NOT NULL CHECK (board_index IN (0, 1)),
+  name               text NOT NULL,
+  note               text,
+  questions          jsonb NOT NULL,                -- point values re-mapped to the target board
+  source_category_id integer REFERENCES categories(id) ON DELETE SET NULL,
+  added_at           timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS featured_extras_theme_idx ON featured_extras (theme_id, board_index);
+
 -- One-off bookkeeping, e.g. "the starting tags were added" (so a tag deleted in /admin stays deleted).
 CREATE TABLE IF NOT EXISTS app_meta (
   key   text PRIMARY KEY,
