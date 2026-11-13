@@ -46,6 +46,12 @@ const io = new Server(server, { maxHttpBufferSize: MAX_MESSAGE_BYTES });
 const pub = path.join(__dirname, 'public');
 
 app.disable('x-powered-by');
+// Health check for uptime monitors. Registered first, so it skips every other middleware and
+// limit, and it never touches the database, rooms or sessions.
+app.get('/healthz', (req, res) => {
+  res.set({ 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+  res.status(200).send('ok');
+});
 app.use((req, res, next) => {
   res.set({
     'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
