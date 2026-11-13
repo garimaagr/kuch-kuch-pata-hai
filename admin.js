@@ -8,6 +8,7 @@ const community = require('./community');
 const { makeLimiter, cleanText, TAG_PATTERN } = require('./limits');
 const { MAX_TAGS, validatePack } = require('./pack');
 const featured = require('./featured');
+const { siteConfig, originAllowed } = require('./site');
 
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const COOKIE = 'buzzin_admin';
@@ -31,7 +32,7 @@ class Oops extends Error {
 }
 
 // options: { pin, ipOf(req), now() } — passed in so tests can control them.
-function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.socket.remoteAddress || 'unknown', now = Date.now } = {}) {
+function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.socket.remoteAddress || 'unknown', now = Date.now, allowedOrigins = siteConfig().allowedOrigins } = {}) {
   const router = express.Router();
   const sessions = new Map(); // token -> expiresAt
   const logins = makeLimiter(5, 15 * 60 * 1000); // per network
@@ -49,12 +50,9 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
   };
   const prune = () => { for (const [t, exp] of sessions) if (exp <= now()) sessions.delete(t); };
 
-  // Every POST must come from this site (no other site can make the browser post here).
-  const sameOrigin = (req) => {
-    const origin = req.headers.origin;
-    const host = req.headers.host;
-    return !!origin && !!host && (origin === `https://${host}` || origin === `http://${host}`);
-  };
+  // Every POST must come from this site (no other site can make the browser post here):
+  // an origin in ALLOWED_ORIGINS, or, with no list (on your laptop), the page's own address.
+  const sameOrigin = (req) => originAllowed(req, allowedOrigins);
 
   router.use(express.json({ limit: '50kb' }));
   router.use((req, res, next) => {

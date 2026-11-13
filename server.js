@@ -17,11 +17,15 @@ const db = require('./db');
 const community = require('./community');
 const { adminRouter } = require('./admin');
 const featured = require('./featured');
+const site = require('./site');
 
 const PORT = Number(process.env.PORT) || 3000;
-// When hosted (e.g. on Render), join links use the public address instead of the wifi IP.
-// Render sets RENDER_EXTERNAL_URL automatically; PUBLIC_URL overrides it.
-const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
+// The site's addresses (see site.js). PUBLIC_URL (e.g. https://buzzin-game.com) is used for join links,
+// QR codes and the remote pairing link; without it, they use the address the host page was opened on.
+const SITE = site.siteConfig();
+const PUBLIC_URL = SITE.publicUrl;
+// Hosted (on Render): trust Render's X-Forwarded-* headers and turn on the public limits.
+const HOSTED = !!(PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || process.env.RENDER);
 
 // Default: the Sparkle Round starts by itself after every this many finished board questions.
 // The host can change it per game in Customise (off, 3, 4 or 6).
@@ -52,6 +56,8 @@ app.get('/healthz', (req, res) => {
   res.set({ 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   res.status(200).send('ok');
 });
+// www.buzzin-game.com and the onrender.com address -> PUBLIC_URL (301). Only when PUBLIC_URL is set.
+app.use(site.canonicalRedirect(SITE));
 app.use((req, res, next) => {
   res.set({
     'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
@@ -69,8 +75,8 @@ app.get('/remote', (req, res) => res.sendFile(path.join(pub, 'remote.html')));
 // The review page for community boards (PIN login; works only with a database).
 app.get('/admin', (req, res) => res.sendFile(path.join(pub, 'admin.html')));
 // The visitor's network (Render puts it in x-forwarded-for). Used for rate limits only.
-const reqIp = (req) => (PUBLIC_URL && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress) || 'unknown';
-app.use('/admin', adminRouter({ ipOf: reqIp }));
+const reqIp = (req) => (HOSTED && req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : req.socket.remoteAddress) || 'unknown';
+app.use('/admin', adminRouter({ ipOf: reqIp, allowedOrigins: SITE.allowedOrigins }));
 
 // ---- Community boards: public, read-only, approved boards only ----
 const communityReads = makeLimiter(120, 60 * 1000); // per network per minute
@@ -225,10 +231,21 @@ function cleanupRooms(now = Date.now()) {
 }
 setInterval(cleanupRooms, 10 * 60 * 1000).unref();
 
+// Where phones reach the game (join link, QR code, remote pairing): PUBLIC_URL when set, else the
+// address the host page was opened on. On a laptop opened as localhost, that's the wifi IP instead
+// (checked each game, in case the laptop changed networks). Null if there's nothing phones can reach.
+function linkBase(socket) {
+  if (PUBLIC_URL) return PUBLIC_URL;
+  const own = site.requestOrigin(socket.handshake.headers, { secure: socket.handshake.secure, trustProxy: HOSTED });
+  if (own && !site.isLoopback(own)) return own;
+  const ip = wifiIp();
+  return ip ? `http://${ip}:${PORT}` : null;
+}
+
 // The visitor's IP. On Render the real one is the first entry of X-Forwarded-For.
 function clientIp(socket) {
   const xff = socket.handshake.headers['x-forwarded-for'];
-  return (PUBLIC_URL && xff ? String(xff).split(',')[0].trim() : socket.handshake.address) || 'unknown';
+  return (HOSTED && xff ? String(xff).split(',')[0].trim() : socket.handshake.address) || 'unknown';
 }
 
 // Constant-time comparison for the host secret.
@@ -488,7 +505,7 @@ io.on('connection', (socket) => {
   on('host:checkPack', ({ text, code, secret, name } = {}, cb) => {
     const room = rooms.get(String(code || '').toUpperCase());
     const key = room && sameSecret(secret, room.hostSecret) ? 'room:' + room.code : 'ip:' + clientIp(socket);
-    if (PUBLIC_URL && !packChecks.allow(key)) {
+    if (HOSTED && !packChecks.allow(key)) {
       return reply(cb, { ok: false, errors: ['Too many pack checks. Please wait 10 minutes and try again.'] });
     }
     if (typeof text !== 'string') return reply(cb, { ok: false, errors: ['Paste the pack first.'] });
@@ -504,7 +521,7 @@ io.on('connection', (socket) => {
       return reply(cb, { ok: false, needPin: true, error: opts?.pin ? 'Wrong PIN. Try again.' : null });
     }
     // Only limited when hosted: on home wifi it's just your own laptop.
-    if (PUBLIC_URL && !roomCreation.allow(clientIp(socket))) {
+    if (HOSTED && !roomCreation.allow(clientIp(socket))) {
       return reply(cb, { ok: false, error: 'Too many new games from this network. Please wait 10 minutes and try again.' });
     }
     cleanupRooms();
@@ -512,13 +529,9 @@ io.on('connection', (socket) => {
       return reply(cb, { ok: false, error: 'Too many games are running right now. Please try again later.' });
     }
     const code = makeCode();
-    let joinUrl;
-    if (PUBLIC_URL) joinUrl = `${PUBLIC_URL}/join/${code}`; // hosted: use the public address
-    else {
-      const ip = wifiIp(); // checked each game, in case the laptop changed networks
-      if (!ip) return reply(cb, { ok: false, error: "This laptop isn't connected to wifi, so phones can't reach it. Connect to your home wifi and click New game again." });
-      joinUrl = `http://${ip}:${PORT}/join/${code}`;
-    }
+    const base = linkBase(socket);
+    if (!base) return reply(cb, { ok: false, error: "This laptop isn't connected to wifi, so phones can't reach it. Connect to your home wifi and click New game again." });
+    const joinUrl = `${base}/join/${code}`;
     let pack, settings, boards, decks, communityId = null;
     try {
       if (opts?.communityId != null) {
