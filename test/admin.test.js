@@ -20,8 +20,9 @@ async function server(t, opts = {}) {
   t.after(() => srv.close());
   const base = `http://127.0.0.1:${srv.address().port}`;
   let cookie = '';
-  const call = async (path, body, { origin = base, keepCookie = true } = {}) => {
+  const call = async (path, body, { origin = base, keepCookie = true, https = false } = {}) => {
     const headers = { 'Content-Type': 'application/json' };
+    if (https) headers['X-Forwarded-Proto'] = 'https';
     if (cookie && keepCookie) headers.Cookie = cookie;
     if (origin) headers.Origin = origin;
     const res = await fetch(base + '/admin/api/' + path, body === undefined ? { headers } : { method: 'POST', headers, body: JSON.stringify(body) });
@@ -40,14 +41,22 @@ test('PIN comparison', () => {
   assert.ok(!samePin(undefined, PIN));
 });
 
-test('login: the session cookie is httpOnly, Secure and SameSite=Strict', async (t) => {
+test('login: the session cookie is httpOnly, Secure (over HTTPS) and SameSite=Strict', async (t) => {
   const { call } = await server(t);
-  const res = await call('login', { pin: PIN });
+  const res = await call('login', { pin: PIN }, { https: true });
   assert.strictEqual(res.status, 200);
   assert.match(res.setCookie, /^buzzin_admin=[A-Za-z0-9_-]{43}; Path=\/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=43200$/);
   assert.strictEqual((await call('session')).body.loggedIn, true);
   await call('logout', {});
   assert.strictEqual((await call('session')).body.loggedIn, false);
+});
+
+test('login over plain http (local testing): no Secure flag, so Safari and wifi IPs keep the cookie', async (t) => {
+  const { call } = await server(t);
+  const res = await call('login', { pin: PIN });
+  assert.strictEqual(res.status, 200);
+  assert.match(res.setCookie, /^buzzin_admin=[A-Za-z0-9_-]{43}; Path=\/admin; HttpOnly; SameSite=Strict; Max-Age=43200$/);
+  assert.strictEqual((await call('session')).body.loggedIn, true);
 });
 
 test('login: 6 wrong PINs in a row are rate limited (even the right one after)', async (t) => {

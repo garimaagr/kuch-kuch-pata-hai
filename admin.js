@@ -79,6 +79,10 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
   // ---- Login ----
   router.get('/api/session', route(async (req) => ({ loggedIn: !!sessionOf(req), hasDb: db.enabled(), hasPin: !!pin })));
 
+  // Secure cookies only over HTTPS (Render sets x-forwarded-proto). Safari, and any browser on
+  // http://<wifi IP>, drops a Secure cookie sent over plain http, which made local logins bounce.
+  const secure = (req) => (req.secure || req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '');
+
   router.post('/api/login', route(async (req, res) => {
     if (!pin) throw new Oops(503, 'Set ADMIN_PIN on the server first.');
     if (!logins.allow(ipOf(req), now())) throw new Oops(429, 'Too many tries. Please wait 15 minutes.');
@@ -86,14 +90,14 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
     prune();
     const token = crypto.randomBytes(32).toString('base64url');
     sessions.set(token, now() + SESSION_MS);
-    res.set('Set-Cookie', `${COOKIE}=${token}; Path=/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_MS / 1000}`);
+    res.set('Set-Cookie', `${COOKIE}=${token}; Path=/admin; HttpOnly${secure(req)}; SameSite=Strict; Max-Age=${SESSION_MS / 1000}`);
     return { ok: true };
   }));
 
   router.post('/api/logout', route(async (req, res) => {
     const token = cookieToken(req);
     if (token) sessions.delete(token);
-    res.set('Set-Cookie', `${COOKIE}=; Path=/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=0`);
+    res.set('Set-Cookie', `${COOKIE}=; Path=/admin; HttpOnly${secure(req)}; SameSite=Strict; Max-Age=0`);
     return { ok: true };
   }));
 
