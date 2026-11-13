@@ -63,11 +63,26 @@ const fx = (() => {
   // ---- Sounds (synthesised beeps) ----
   let ac = null;
   let muted = (() => { try { return localStorage.getItem('fbMuted') === '1'; } catch { return false; } })();
+  let onSound = () => {};
+  const audio = () => {
+    if (!ac) try { ac = new AudioContext(); ac.onstatechange = () => onSound(); } catch {}
+    return ac;
+  };
+  // Browsers only let sound start from a tap or key press on this page (Safari: inside it). Sounds here are
+  // set off by phones, so unlock on the first tap or key press anywhere, and again if the browser suspends it.
+  function unlock() {
+    const a = audio();
+    if (!a || a.state === 'running') return;
+    a.resume().catch(() => {});
+    try { const s = a.createBufferSource(); s.buffer = a.createBuffer(1, 1, 22050); s.connect(a.destination); s.start(0); } catch {}
+  }
+  for (const ev of ['pointerdown', 'keydown', 'touchend', 'click']) addEventListener(ev, unlock, { capture: true, passive: true });
+  audio(); // made now, so the screen can tell if the browser is blocking sound before the first beep
   function tone(freq, start, dur, type = 'sine', vol = 0.18) {
     if (muted) return;
     try {
-      ac ||= new AudioContext();
-      if (ac.state === 'suspended') ac.resume();
+      audio();
+      if (ac.state === 'suspended') ac.resume().catch(() => {});
       const t = ac.currentTime + start;
       const o = ac.createOscillator();
       const g = ac.createGain();
@@ -122,5 +137,10 @@ const fx = (() => {
     setTimeout(() => box.replaceChildren(), 8000);
   }
 
-  return { confetti, replay, play, banner, emojiRain, setMuted, get muted() { return muted; } };
+  return {
+    confetti, replay, play, banner, emojiRain, setMuted, get muted() { return muted; },
+    // True while sound is on but the browser hasn't let it start yet (needs a tap on this page).
+    get soundBlocked() { return !muted && !!ac && ac.state !== 'running'; },
+    set onSound(cb) { onSound = cb; },
+  };
 })();

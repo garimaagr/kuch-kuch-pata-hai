@@ -889,7 +889,12 @@ function tickTimer() {
 }
 setInterval(tickTimer, 250);
 
-$('mute').onclick = () => { fx.setMuted(!fx.muted); $('mute').textContent = fx.muted ? '🔇' : '🔊'; };
+$('mute').onclick = () => { fx.setMuted(!fx.muted); $('mute').textContent = fx.muted ? '🔇' : '🔊'; soundHint(); };
+// The browser blocks sound until this page is tapped. The tap itself turns it on (fx.js); this just asks for one.
+const soundHint = () => show('soundOn', fx.soundBlocked);
+fx.onSound = soundHint;
+$('soundOn').onclick = () => setTimeout(soundHint, 100);
+soundHint();
 $('mute').textContent = fx.muted ? '🔇' : '🔊';
 
 $('scores').onclick = (e) => {
