@@ -12,7 +12,8 @@ const { Pool } = require('pg');
 const SCHEMA_FILE = path.join(__dirname, 'schema.sql');
 const LOCK_ID = 4242017; // advisory lock: two server copies starting at once won't trip over each other
 
-// Added the first time the tables are created. After that, /admin owns the tag list.
+// Each starting tag is added once (also to databases made before it was on this list). After that,
+// /admin owns the tag list: a starting tag you rename or delete stays that way.
 const STARTING_TAGS = [
   ['Movies', '🎬'],
   ['TV', '📺'],
@@ -26,7 +27,9 @@ const STARTING_TAGS = [
   ['Food', '🍕'],
   ['Gaming', '🎮'],
   ['Holidays', '🎉'],
+  ['Education', '📚'], // school subjects and learning games
 ];
+const FIRST_TAGS = 12; // the ones older databases recorded under the single 'starting_tags' key
 
 // "Cartoons & Kids" -> "cartoons-and-kids"
 const slugify = (name) => String(name).toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -86,14 +89,22 @@ async function init({ url = process.env.DATABASE_URL || '', schema = '', log = c
   }
 }
 
-// The starting tags go in once. If you later rename or delete one in /admin, a restart won't bring it back.
+// Each starting tag goes in once, remembered in app_meta as 'starting_tag:<slug>'. If you later rename
+// or delete one in /admin, a restart won't bring it back. A tag added to the list later (e.g. Education)
+// still reaches databases made before it. An existing tag with the same slug is left as it is.
 async function seedTags(client) {
-  const first = await client.query(
-    "INSERT INTO app_meta (key, value) VALUES ('starting_tags', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key",
+  const mark = (slug) => client.query(
+    'INSERT INTO app_meta (key, value) VALUES ($1, now()::text) ON CONFLICT (key) DO NOTHING RETURNING key', ['starting_tag:' + slug],
   );
-  if (!first.rowCount) return;
+  // Databases made before per-tag tracking recorded the first 12 under one key: those are done.
+  if ((await client.query("SELECT 1 FROM app_meta WHERE key = 'starting_tags'")).rowCount) {
+    for (const [name] of STARTING_TAGS.slice(0, FIRST_TAGS)) await mark(slugify(name));
+  }
   for (const [name, emoji] of STARTING_TAGS) {
-    await client.query('INSERT INTO tags (slug, name, emoji) VALUES ($1, $2, $3) ON CONFLICT (slug) DO NOTHING', [slugify(name), name, emoji]);
+    const slug = slugify(name);
+    if ((await mark(slug)).rowCount) {
+      await client.query('INSERT INTO tags (slug, name, emoji) VALUES ($1, $2, $3) ON CONFLICT (slug) DO NOTHING', [slug, name, emoji]);
+    }
   }
 }
 

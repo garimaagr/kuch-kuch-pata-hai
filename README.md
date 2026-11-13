@@ -111,7 +111,7 @@ Community boards need a free Postgres database from [Neon](https://neon.tech). W
 **Your laptop**
 - Copy `.env.example` to `.env` (git ignores it) and set `DATABASE_URL` to the **dev** branch's connection string, plus an `ADMIN_PIN`. Then `npm start`.
 
-The tables are created by themselves when the server starts (`schema.sql`), along with 12 starting tags (Movies, TV, Music, …). Tags you later rename or delete in `/admin` stay that way. The server log says `Community boards: database connected.` when it's working. If it can't reach the database, it logs the reason and carries on without community boards.
+The tables are created by themselves when the server starts (`schema.sql`), along with 13 starting tags (Movies, TV, Music, …, 📚 Education). Each starting tag is added once, including to an existing database when a new one joins the list. Tags you later rename or delete in `/admin` stay that way. The server log says `Community boards: database connected.` when it's working. If it can't reach the database, it logs the reason and carries on without community boards.
 
 ## 🌐 Community boards: sharing and review (`/admin`)
 

@@ -44,11 +44,12 @@ test('tables are created, starting tags added once, and setup can run again', { 
     assert.deepStrictEqual(tables, ['app_meta', 'categories', 'featured_extras', 'pack_tags', 'packs', 'tags']);
 
     const tags = (await db.query('SELECT slug, name, emoji FROM tags ORDER BY id')).rows;
-    assert.strictEqual(tags.length, 12);
+    assert.strictEqual(tags.length, 13);
     assert.deepStrictEqual(tags[4], { slug: 'cartoons-and-kids', name: 'Cartoons & Kids', emoji: '🧸' });
+    assert.deepStrictEqual(tags[12], { slug: 'education', name: 'Education', emoji: '📚' });
 
-    // The admin deletes a starting tag; restarting the server must not bring it back.
-    await db.query('DELETE FROM tags WHERE slug = $1', ['gaming']);
+    // The admin deletes starting tags; restarting the server must not bring them back.
+    await db.query('DELETE FROM tags WHERE slug = ANY($1)', [['gaming', 'education']]);
     await db.close();
     assert.strictEqual(await db.init({ url: URL, schema, log: quiet }), true);
     assert.strictEqual((await db.query('SELECT count(*)::int AS n FROM tags')).rows[0].n, 11);
@@ -71,13 +72,46 @@ test('tables are created, starting tags added once, and setup can run again', { 
   }
 });
 
+test('a database made before Education existed gets it once; its deleted starting tags stay deleted', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async () => {
+  const schema = `t_${crypto.randomBytes(6).toString('hex')}`;
+  const admin = new Pool({ connectionString: URL, ssl: db.sslFor(URL) });
+  await admin.query(`CREATE SCHEMA ${schema}`);
+  try {
+    // Make it look like an older database: the single 'starting_tags' key, 12 tags, one deleted, one own tag.
+    await db.init({ url: URL, schema, log: quiet });
+    await db.query("DELETE FROM app_meta WHERE key LIKE 'starting_tag:%'");
+    await db.query("INSERT INTO app_meta (key, value) VALUES ('starting_tags', 'old')");
+    await db.query("DELETE FROM tags WHERE slug IN ('education', 'food')");
+    await db.query("INSERT INTO tags (slug, name, emoji) VALUES ('anime', 'Anime', '🍥')");
+    await db.close();
+
+    await db.init({ url: URL, schema, log: quiet });
+    const slugs = (await db.query('SELECT slug FROM tags')).rows.map((r) => r.slug);
+    assert.ok(slugs.includes('education'), 'Education is added');
+    assert.ok(!slugs.includes('food'), 'a starting tag the admin deleted stays deleted');
+    assert.ok(slugs.includes('anime'), 'the admin\'s own tags are kept');
+    assert.ok(db.tagNames().includes('Education'), 'and it\'s in the cached list (Share form, prompt)');
+
+    // Renamed or deleted later: a restart leaves it that way.
+    await db.query("UPDATE tags SET name = 'Learning' WHERE slug = 'education'");
+    await db.close();
+    await db.init({ url: URL, schema, log: quiet });
+    assert.deepStrictEqual((await db.query("SELECT name FROM tags WHERE slug = 'education'")).rows, [{ name: 'Learning' }]);
+    assert.strictEqual((await db.query('SELECT count(*)::int AS n FROM tags')).rows[0].n, 13);
+  } finally {
+    await db.close();
+    await admin.query(`DROP SCHEMA ${schema} CASCADE`);
+    await admin.end();
+  }
+});
+
 test('the tag list is loaded for the prompt and pack checks', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async () => {
   const schema = `t_${crypto.randomBytes(6).toString('hex')}`;
   const admin = new Pool({ connectionString: URL, ssl: db.sslFor(URL) });
   await admin.query(`CREATE SCHEMA ${schema}`);
   try {
     await db.init({ url: URL, schema, log: quiet });
-    assert.strictEqual(db.tagNames().length, 12);
+    assert.strictEqual(db.tagNames().length, 13);
     assert.ok(db.tagNames().includes('Cartoons & Kids'));
     await db.query('INSERT INTO tags (slug, name, emoji) VALUES ($1, $2, $3)', ['anime', 'Anime', '🍥']);
     assert.ok(!db.tagNames().includes('Anime'), 'cached until refreshed');
