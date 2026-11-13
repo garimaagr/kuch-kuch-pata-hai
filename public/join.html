@@ -25,12 +25,36 @@
         <div id="spHead" class="status"></div>
         <div id="spBig" class="secret"></div>
         <div id="spTimer" class="timer"></div>
+        <!-- No host: the performer and the voters play from here -->
+        <div id="nhSpCount" class="nh-phone-count hidden"></div>
+        <button id="nhGuessed" class="nh-big good hidden">🎉 Guessed!</button>
+        <button id="nhMimicDone" class="nh-big hidden">✅ Done</button>
+        <div id="nhMimicVote" class="nh-row hidden">
+          <button data-mimic="lol">😂<small>+100</small></button>
+          <button data-mimic="smile">🙂<small>+50</small></button>
+          <button data-mimic="meh">😐<small>+25</small></button>
+        </div>
       </div>
 
       <div id="game" class="hidden">
         <div id="doubleNote" class="double-note hidden">💥 DOUBLE! Worth 2×</div>
         <button id="buzz" disabled>BUZZ</button>
         <div id="status" class="status"></div>
+        <!-- No host: countdowns, your own answer check, challenges and votes -->
+        <div id="nhCount" class="nh-phone-count hidden"></div>
+        <div id="nhAnswer" class="nh-answer hidden"></div>
+        <div id="nhJudge" class="nh-row hidden">
+          <button id="nhGot" class="good">✅ I got it</button>
+          <button id="nhMissed" class="bad">❌ I missed it</button>
+        </div>
+        <button id="nhChallenge" class="nh-big bad hidden">🚩 Challenge</button>
+        <button id="nhPass" class="nh-big secondary hidden">🙅 Pass</button>
+        <div id="nhBoard" class="nh-board hidden" role="grid" aria-label="Pick the next tile"></div>
+        <div id="nhBonus" class="nh-row hidden">
+          <button data-bonus="up">👍</button>
+          <button data-bonus="down">👎</button>
+        </div>
+        <div id="nhFunny" class="nh-funny hidden"></div>
       </div>
     </main>
   </div>

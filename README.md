@@ -45,6 +45,20 @@ It prints something like:
    - Tap **▶ Start timer** when the performer is ready (60 seconds). **⏸ Stop timer** pauses it.
    - Give **+25 / +50 / +100**, any amount in the box, or **No points**. Then you're back on the board.
 
+## 🙋 No host (everyone plays)
+
+In **Customise → Host**, pick **No host (everyone plays)** and nobody has to sit out as the host. The shared screen (TV or laptop) never shows an answer before the reveal, has no host buttons and no "Hold to peek". The server runs every step and its clock:
+
+- **Buzzers open by themselves** after a reading delay: 2s + 0.25s per word of the question (at most 8s), with a countdown on the screen and the phones.
+- **First buzz:** 5s to say your answer out loud. Then only the buzzer's phone shows the answer, with ✅ **I got it** / ❌ **I missed it** (20s; no choice counts as missed). The other teams' phones then show 🚩 **Challenge** for 5s; any one challenge flips the result. The score is applied after that.
+- **Right:** answer and fun fact on the screen for 7s, then the bonus. **Wrong:** the points are lost, that team is locked out and the buzzers reopen for the rest. If every team is locked out, or nobody buzzes for 15s, the answer is revealed and it's back to the board.
+- **🙅 Pass:** once a wrong answer reopens the buzzers, each team still in can pass instead of buzzing. Passing costs nothing. If every team left passes, the answer is revealed.
+- **🎯 Who picks:** the team that answered right picks the next tile, on any of their phones (a mini board) or on the shared screen; the screen says which team it is. Before anyone has scored, anyone can pick. If nobody gets a question right, the same team picks again.
+- **Bonus:** the other teams vote 👍 / 👎 on their phones for 10s (or until everyone voted). More 👍 than 👎 gives the points.
+- **Sparkle Round:** the team is picked in turn, with a random mode and each of its players performing in turn. Draw / Charades: the performer's phone has **Guessed!** (the card's points; Charades +100). Mimic: when the timer ends (or the performer taps Done), the other teams vote 😂 +100 / 🙂 +50 / 😐 +25; the most votes wins.
+- **😂 +5:** every player can give one per question, to another team.
+- The phone remote is off in this mode, because it shows the answers.
+
 ## 📱 Use your phone as the remote
 
 The host page is also what's on the TV, so everyone can see the buttons and "Hold to peek". With a remote you run the game from your phone, and the TV shows only the show: the question, the buzz order, the answer once you reveal it, and the scores. It's optional: without it, everything works as above.

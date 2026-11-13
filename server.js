@@ -13,6 +13,7 @@ const buzz = require('./buzz');
 const { makeLimiter, cleanText } = require('./limits');
 const { validatePack, defaultCategories, chosenCategories, checkUploadedText } = require('./pack');
 const remotes = require('./remote');
+const nohost = require('./nohost');
 const db = require('./db');
 const community = require('./community');
 const { adminRouter } = require('./admin');
@@ -184,7 +185,39 @@ function publicState(room) {
     double: !!room.current?.double, // phones show "DOUBLE!" while a Double tile is open
     question: !!room.current, // phones say "Look at the TV" between questions
     packName: room.packName,
+    // No host mode: the server's clock and votes (never the answer), and the bonus to vote on.
+    mode: room.nh ? 'nohost' : 'host',
+    nh: room.nh ? engine.view(room, Date.now()) : null,
+    bonus: room.nh ? room.bonus : undefined,
+    // No host: the picking team's phones show the board (categories and values only, never questions).
+    board: room.nh ? boardView(room) : undefined,
+    used: room.nh ? room.used : undefined,
+    screen: room.nh ? room.screen : undefined,
   };
+}
+
+const boardView = (room) => room.board.map((c) => ({ category: c.category, note: c.note, values: c.questions.map((q) => q.value) }));
+
+// Opens a tile: from the shared screen, or (No host) from the picking team's phone.
+function startTile(room, cat, idx) {
+  if (room.current || room.reveal || room.bonus || room.screen !== 'board' || !room.board[cat]?.questions[idx] || room.used.includes(`${cat}-${idx}`)) return false;
+  // The hidden Double: worth 2x if right, costs 2x if wrong.
+  room.current = { cat, idx, double: room.settings.double && room.doubles[room.boardNo] === `${cat}-${idx}` };
+  room.showAnswer = false;
+  buzz.resetBuzz(room.buzz);
+  if (room.nh) engine.pickTile(room, Date.now()); // buzzers open by themselves after the reading delay
+  return true;
+}
+
+// The open question for the screen. In No host mode the shared screen is everyone's, so the answer
+// (and anything after it) stays on the server until the reveal.
+function screenQuestion(room) {
+  if (!room.current) return null;
+  const c = room.board[room.current.cat];
+  const q = c.questions[room.current.idx];
+  const full = { ...room.current, ...q, category: c.category, note: c.note };
+  if (!room.nh) return full;
+  return { cat: room.current.cat, idx: room.current.idx, double: room.current.double, value: q.value, question: q.question, category: c.category, note: c.note };
 }
 
 // The host also gets the board, the open question and its answer. Phones never see answers.
@@ -192,7 +225,7 @@ function hostState(room) {
   return {
     ...publicState(room),
     screen: room.screen,
-    board: room.board.map((c) => ({ category: c.category, note: c.note, values: c.questions.map((q) => q.value) })),
+    board: boardView(room),
     used: room.used,
     boardNo: room.boardNo,
     boardCount: room.boards.length,
@@ -202,7 +235,7 @@ function hostState(room) {
     packName: room.packName,
     packEmoji: room.packEmoji,
     settings: room.settings,
-    current: room.current && { ...room.current, ...room.board[room.current.cat].questions[room.current.idx], category: room.board[room.current.cat].category, note: room.board[room.current.cat].note },
+    current: screenQuestion(room),
     showAnswer: room.showAnswer,
     reveal: room.reveal,
     bonus: room.bonus,
@@ -215,6 +248,8 @@ function hostState(room) {
 
 // Ends a game: tells its phones (and any other host tab) and forgets it, so old links stop working.
 function closeRoom(code, message) {
+  const room = rooms.get(code);
+  if (room) clearTimeout(room.nhTimer);
   if (message) io.to(code).emit('ended', message);
   io.in(code).disconnectSockets(true);
   io.in(code + ':host').disconnectSockets(true);
@@ -265,8 +300,27 @@ function send(room) {
     if (p?.socketId) io.to(p.socketId).emit('secret', card);
     io.to(room.code + ':remote').emit('secret', card); // the host judges from the remote
   }
+  // No host: while judging, only the buzzer's own phone sees the answer (to tap ✅ or ❌ honestly).
+  if (room.nh?.phase === 'judging') {
+    const p = room.players.get(room.nh.buzzer);
+    if (p?.socketId) io.to(p.socketId).emit('nhAnswer', currentQuestion(room)?.answer || '');
+  }
   io.to(room.code).emit('state', publicState(room));
   io.to(room.code + ':host').emit('state', hostState(room));
+  if (room.nh) schedule(room);
+}
+
+// No host: one timer per room, set to the next deadline. When it fires, the server takes the step.
+function schedule(room) {
+  clearTimeout(room.nhTimer);
+  room.nhTimer = null;
+  if (room.nh.deadline == null || !rooms.has(room.code)) return;
+  room.nhTimer = setTimeout(() => {
+    if (rooms.get(room.code) !== room) return;
+    if (engine.tick(room, Date.now())) send(room);
+    else schedule(room);
+  }, Math.max(0, room.nh.deadline - Date.now()) + 10);
+  room.nhTimer.unref?.();
 }
 
 // Quick "+5 😂" style flash next to a team's score on the TV.
@@ -307,6 +361,23 @@ function drawCard(room) {
   s.cardIdx = left[Math.floor(Math.random() * left.length)];
   s.empty = false;
   room.drawn[key].push(s.cardIdx);
+}
+
+// Cards left in a mode (Draw: in one level, or in any level).
+function cardsLeft(room, mode, level) {
+  const left = (key) => room.decks[key].length - room.drawn[key].length;
+  if (mode !== 'draw') return left(mode);
+  return level ? left(`draw:${level}`) : Object.keys(DRAW_LEVELS).reduce((n, l) => n + left(`draw:${l}`), 0);
+}
+
+// Gives the Sparkle points and goes back to the board.
+function applySparkle(room, points) {
+  const s = room.sparkle;
+  const team = s && room.teams.find((t) => t.id === s.teamId);
+  if (team) team.score += points;
+  room.screen = 'board';
+  room.sparkle = null;
+  if (team && points) flash(room, team.id, `${points > 0 ? '+' : ''}${points} ✨`);
 }
 
 // What everyone may see. Draw / charades titles are left out.
@@ -363,6 +434,7 @@ function gameSettings(opts, pack) {
     modes,
     bonuses: o.bonuses !== false,
     double: o.double !== false,
+    host: o.host === 'nohost' ? 'nohost' : 'host', // No host: everyone plays, the server runs the clock
     categories: boardIdx.map((bi) => (Array.isArray(o.categories) ? o.categories[bi] : null)),
   };
 }
@@ -421,6 +493,12 @@ function makeTeams(room, count) {
   room.sparkle = null;
 }
 
+// The No host rules (nohost.js), using the same scoring and Sparkle helpers as a hosted game.
+const engine = nohost.makeEngine({
+  question: currentQuestion, finishQuestion, goToBoard, drawCard, cardsLeft,
+  awardSparkle: applySparkle, drawLevels: DRAW_LEVELS, sparkleMs: SPARKLE_MS, flash,
+});
+
 // A paired phone: gets the host view (answers included) and the Sparkle secret word.
 function becomeRemote(sock, room, remoteId) {
   sock.data = { role: 'remote', code: room.code, remoteId };
@@ -475,9 +553,14 @@ io.on('connection', (socket) => {
   // tap Correct at the same moment, the second one carries an old version and is ignored.
   // (+5 and the score − / + buttons are meant to be tapped repeatedly, so they skip the check.)
   const REPEATABLE = new Set(['host:funny', 'host:adjustScore']);
+  // No host mode: the server makes these calls itself (or the players do, from their phones).
+  const SERVER_RUN = new Set(['host:openBuzzers', 'host:resetBuzzers', 'host:correct', 'host:wrong', 'host:showAnswer', 'host:revealNext',
+    'host:backToBoard', 'host:funny', 'host:bonus', 'host:adjustScore', 'host:sparkleTeam', 'host:sparkleMode', 'host:sparkleLevel',
+    'host:sparklePerformer', 'host:skipCard', 'host:timer', 'host:sparklePoints', 'host:sparkleGuessed']);
   const act = (event, fn) => on(event, (data, version) => {
     const room = hostRoom();
     if (!room) return;
+    if (room.nh && (SERVER_RUN.has(event) || room.nh.phase)) return; // mid-step, nothing on the screen can change it
     if (!REPEATABLE.has(event) && version !== room.version) {
       socket.emit('state', hostState(room)); // catch this device up; the tap is dropped
       return;
@@ -559,7 +642,7 @@ io.on('connection', (socket) => {
       return reply(cb, { ok: false, error: 'Could not load the question pack: ' + err.message });
     }
     const boardNames = settings.boardIdx.map((bi) => pack.boards[bi].name);
-    const publicSettings = { sparkleEvery: settings.sparkleEvery, modes: settings.modes, bonuses: settings.bonuses, double: settings.double };
+    const publicSettings = { sparkleEvery: settings.sparkleEvery, modes: settings.modes, bonuses: settings.bonuses, double: settings.double, host: settings.host };
     const room = {
       code, joinUrl, hostSecret: crypto.randomBytes(18).toString('base64url'), lastActive: Date.now(), players: new Map(), teams: [], buzz: buzz.newBuzz(),
       screen: 'lobby', packName: pack.name, packEmoji: pack.emoji || '', teamNames: teamNamesFor(pack), settings: publicSettings,
@@ -568,6 +651,7 @@ io.on('connection', (socket) => {
       finished: 0, sparkleDue: false, reveal: null, bonus: null,
       decks, drawn: Object.fromEntries(DECK_KEYS.map((k) => [k, []])), sparkle: null,
       version: 0,
+      nh: settings.host === 'nohost' ? nohost.newNoHost() : null,
     };
     remotes.initRemotes(room);
     room.used = room.usedBy[0];
@@ -628,7 +712,7 @@ io.on('connection', (socket) => {
   act('host:screen', (screen) => {
     const room = hostRoom();
     if (!room || !['lobby', 'board', 'sparkle', 'winner'].includes(screen) || room.current || room.reveal || room.bonus) return;
-    if (screen === 'sparkle' && !room.settings.sparkleEvery) return; // Sparkle is off for this game
+    if (screen === 'sparkle' && (!room.settings.sparkleEvery || room.nh)) return; // Sparkle is off, or comes by itself (No host)
     room.screen = screen;
     room.sparkle = screen === 'sparkle' ? newSparkle() : null;
     send(room);
@@ -646,12 +730,7 @@ io.on('connection', (socket) => {
 
   act('host:pickTile', ({ cat, idx } = {}) => {
     const room = hostRoom();
-    if (!room || room.current || room.reveal || room.bonus || !room.board[cat]?.questions[idx] || room.used.includes(`${cat}-${idx}`)) return;
-    // The hidden Double: worth 2x if right, costs 2x if wrong.
-    room.current = { cat, idx, double: room.settings.double && room.doubles[room.boardNo] === `${cat}-${idx}` };
-    room.showAnswer = false;
-    buzz.resetBuzz(room.buzz);
-    send(room);
+    if (room && startTile(room, cat, idx)) send(room);
   });
 
   act('host:correct', () => {
@@ -804,12 +883,8 @@ io.on('connection', (socket) => {
   });
 
   function awardSparkle(room, points) {
-    const s = room.sparkle;
-    room.teams.find((t) => t.id === s.teamId).score += points;
-    room.screen = 'board';
-    room.sparkle = null;
+    applySparkle(room, points);
     send(room);
-    if (points) flash(room, s.teamId, `${points > 0 ? '+' : ''}${points} ✨`);
   }
 
   // The host chooses the points (preset buttons or a custom amount), then it's back to the board.
@@ -834,6 +909,7 @@ io.on('connection', (socket) => {
   on('host:pairStart', async (cb) => {
     const room = tvRoom();
     if (!room) return reply(cb, { ok: false });
+    if (room.nh) return reply(cb, { ok: false, error: 'No host games have no remote: the remote shows the answers.' });
     if (!pairAttempts.allow('room:' + room.code)) return reply(cb, { ok: false, error: 'Too many pairing attempts. Wait a minute and try again.' });
     const res = remotes.startPairing(room);
     if (!res.ok) return reply(cb, res);
@@ -941,8 +1017,27 @@ io.on('connection', (socket) => {
     const room = rooms.get(socket.data.code);
     const p = room?.players.get(socket.data.playerId);
     if (!p) return;
-    if (buzz.tryBuzz(room.buzz, p.teamId, p.id)) send(room);
+    if (room.nh ? engine.buzzIn(room, p.id, Date.now()) : buzz.tryBuzz(room.buzz, p.teamId, p.id)) send(room);
   });
+
+  // ---- No host mode: what players do from their phones (the server checks who may, and when) ----
+  const playerAct = (event, fn) => on(event, (data) => {
+    const room = rooms.get(socket.data.code);
+    const p = room?.players.get(socket.data.playerId);
+    if (!p || !room.nh || p.socketId !== socket.id) return;
+    room.lastActive = Date.now();
+    if (fn(room, p.id, data, Date.now())) send(room);
+  });
+  playerAct('player:claim', (room, id, gotIt, now) => engine.claim(room, id, gotIt, now)); // ✅ / ❌
+  playerAct('player:challenge', (room, id) => engine.challenge(room, id)); // 🚩
+  playerAct('player:bonusVote', (room, id, up, now) => engine.bonusVote(room, id, up, now)); // 👍 / 👎
+  playerAct('player:guessed', (room, id, _d, now) => engine.guessed(room, id, now)); // Draw / Charades
+  playerAct('player:mimicDone', (room, id, _d, now) => engine.mimicDone(room, id, now));
+  playerAct('player:mimicVote', (room, id, choice, now) => engine.mimicVote(room, id, choice, now)); // 😂 / 🙂 / 😐
+  playerAct('player:pass', (room, id, _d, now) => engine.pass(room, id, now)); // 🙅 after a reopen
+  // The team that answered right picks the next tile from their phones.
+  playerAct('player:pickTile', (room, id, { cat, idx } = {}) => engine.canPick(room, id) && Number.isInteger(cat) && Number.isInteger(idx) && startTile(room, cat, idx));
+  playerAct('player:funny', (room, id, teamId) => engine.funny(room, id, teamId)); // 😂 +5 to another team
 
   on('disconnect', () => {
     const room = rooms.get(socket.data.code);

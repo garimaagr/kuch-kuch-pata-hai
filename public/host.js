@@ -31,6 +31,7 @@ let secret = load('fbHostSecret'); // proves to the server that this laptop is t
 let qr = null;
 let state = null;
 let sparkleEndsAt = null; // local clock time when the timer runs out (only while running)
+let nhEndsAt = null; // No host: local clock time of the server's next step (for the countdowns)
 let prev = null; // what the last render showed, so effects only fire on changes
 let lastSecs = null;
 let lastScreen = null; // so a new screen scrolls to the top (and not on every update)
@@ -85,7 +86,7 @@ function gotRoom(res) {
 // ---- Setup screen: theme cards, Start, and the optional Customise options ----
 let setupOpen = false;
 let packs = []; // theme summaries from the server (names and categories only)
-const SETUP_DEFAULTS = { packId: 'world', boards: 'both', sparkleEvery: 6, modes: { draw: true, charades: true, mimic: true }, bonuses: true, double: true, cats: {} };
+const SETUP_DEFAULTS = { host: 'host', packId: 'world', boards: 'both', sparkleEvery: 6, modes: { draw: true, charades: true, mimic: true }, bonuses: true, double: true, cats: {} };
 let setup = (() => {
   try { return { ...SETUP_DEFAULTS, ...JSON.parse(load('fbSetup') || '{}') }; } catch { return { ...SETUP_DEFAULTS }; }
 })();
@@ -282,7 +283,7 @@ function startNewGame() {
     : pack.community ? { communityId: pack.id.slice(2), categories }
     : { packId: pack.id, categories };
   socket.emit('host:new', {
-    pin: $('pin').value, ...which, boards: setup.boards, sparkleEvery: setup.sparkleEvery,
+    pin: $('pin').value, ...which, host: setup.host, boards: setup.boards, sparkleEvery: setup.sparkleEvery,
     modes: setup.modes, bonuses: setup.bonuses, double: setup.double,
     replaces: code && secret ? { code, secret } : undefined, // the server ends the previous game
   }, gotRoom);
@@ -329,6 +330,7 @@ function renderSetup() {
     pack.community ? h('div', { class: 'comm-detail' }, [pack.madeBy ? `🌐 Made by ${pack.madeBy}` : '🌐 Community board',
       (pack.tags || []).map((t) => `${t.emoji} ${t.name}`.trim()).join(', ')].filter(Boolean).join(' · '), pack.kidFriendly ? pill('pill-kids', 'Kids') : null) : null);
 
+  seg('optHost', [['host', 'Someone hosts'], ['nohost', 'No host (everyone plays)']], setup.host === 'nohost' ? 'nohost' : 'host', (v) => (setup.host = v));
   seg('optBoards', pack.boards.length < 2 ? [['both', 'Board 1']] :
     [['both', 'Both'], ['1', 'Board 1 only'], ['2', 'Board 2 only']], pack.boards.length < 2 ? 'both' : setup.boards, (v) => (setup.boards = v));
   seg('optSparkle', [[0, 'Off'], [3, 'Every 3'], [4, 'Every 4'], [6, 'Every 6']], setup.sparkleEvery, (v) => (setup.sparkleEvery = v));
@@ -659,6 +661,7 @@ socket.on('connect', () => {
 socket.on('state', (s) => {
   state = s;
   sparkleEndsAt = s.sparkle?.running ? Date.now() + s.sparkle.remaining : null;
+  nhEndsAt = s.nh?.endsIn != null ? Date.now() + s.nh.endsIn : null;
   render();
 });
 
@@ -885,7 +888,10 @@ function render() {
   $('remoteBadge').textContent = nRemotes > 1 ? `📱 ${nRemotes} remotes connected` : '📱 Remote connected';
   show('showControls', nRemotes > 0 && screen !== 'setup' && screen !== 'start');
   $('showControls').textContent = forceControls ? 'Hide controls' : 'Show controls';
-  const canPair = !!state && nRemotes < 2;
+  // No host: the shared screen is everyone's. No answers, no host buttons; the server runs the steps.
+  const noHost = state?.mode === 'nohost';
+  document.body.classList.toggle('nohost', noHost && screen !== 'setup');
+  const canPair = !!state && nRemotes < 2 && !noHost; // a remote would show the answers
   show('pairMenu', canPair);
   show('pairLobby', canPair);
   show('revokeRemotes', nRemotes > 0);
@@ -898,7 +904,7 @@ function render() {
   const waiting = state ? state.players.filter((p) => p.teamId == null).length : 0;
   $('toLobby').textContent = waiting && state.teams.length ? `Lobby / teams (${waiting} waiting)` : 'Lobby / teams';
   $('toLobby').classList.toggle('attention', !!waiting && !!state?.teams.length);
-  show('toSparkle', screen === 'board' && !!state?.settings?.sparkleEvery);
+  show('toSparkle', screen === 'board' && !!state?.settings?.sparkleEvery && !noHost);
   show('finishGame', screen === 'board');
   show('switchBoard', screen === 'board' && state?.boardCount > 1);
   show('cancelSetup', !!state);
@@ -960,6 +966,10 @@ function render() {
     });
   }
   fill('grid', cells);
+  // No host: who picks the next tile (the team that last answered right).
+  const picker = noHost && state.nh?.picker != null ? teamOf(state.nh.picker) : null;
+  show('nhPicker', noHost && screen === 'board' && !state.boardDone);
+  if (noHost) fill('nhPicker', picker ? ['🎯 ', h('span', { color: picker.color }, picker.name), ' picks the next tile, on their phones or here.'] : '🎯 Tap a tile here, or pick it from a phone.');
 
   // ---- Question ----
   const q = state.current;
@@ -1007,7 +1017,8 @@ function render() {
   // ---- Bonus ----
   if (state.bonus) {
     show('bonusHelp', firstTime('bonus', `${state.boardNo}-${state.used.length}`));
-    $('bonusHelp').textContent = `Bonus: do this and your team gets +${state.bonus.points}. Skipping is fine.`;
+    $('bonusHelp').textContent = noHost ? `Bonus: do this, and the other teams vote 👍 or 👎 on their phones. More 👍 = +${state.bonus.points}.`
+      : `Bonus: do this and your team gets +${state.bonus.points}. Skipping is fine.`;
     const t = teamOf(state.bonus.teamId);
     fill('bonusFor', '⭐ BONUS for ', h('span', { color: t?.color }, t?.name || '?'), ':');
     $('bonusText').textContent = state.bonus.text;
@@ -1019,7 +1030,7 @@ function render() {
   if (screen === 'sparkle' && sp) {
     show('sparkleHelp', firstTime('sparkle', `${state.boardNo}-${state.used.length}`));
     const team = teamOf(sp.teamId);
-    $('spShow').textContent = sp.hasCard ? '' : team ? `${team.name} is up! The host is picking the game…` : 'The host is picking a team…';
+    $('spShow').textContent = sp.hasCard ? '' : noHost ? 'Picking the next team…' : team ? `${team.name} is up! The host is picking the game…` : 'The host is picking a team…';
     show('spSetup', !sp.hasCard);
     show('spCard', sp.hasCard);
 
@@ -1081,8 +1092,48 @@ function render() {
         h('button', { class: 'secondary', data: { team: t.id, delta: -100 } }, '−'), ' ',
         h('button', { class: 'secondary', data: { team: t.id, delta: 100 } }, '+')))));
 
+  nhTick();
   effects(screen, oldPts);
 }
+
+// No host: what the server is doing right now, with its countdown (updated 4× a second).
+function nhTick() {
+  const n = state?.nh;
+  const ids = ['nhQ', 'nhR', 'nhB', 'nhS'];
+  if (!n || setupOpen) { ids.forEach((id) => show(id, false)); return; }
+  const secs = nhEndsAt == null ? '' : Math.max(0, Math.ceil((nhEndsAt - Date.now()) / 1000));
+  const teamOf = (id) => state.teams.find((t) => t.id === id);
+  const who = (pid, tid) => { const t = teamOf(tid); return h('span', { color: t?.color }, `${state.players.find((p) => p.id === pid)?.name || '?'} (${t?.name || '?'})`); };
+  const count = h('b', { class: 'nh-count' }, secs);
+  let el = null;
+  let parts = [];
+  if (state.current) {
+    el = 'nhQ';
+    if (n.phase === 'reading') parts = ['Buzzers open in ', count];
+    else if (n.phase === 'open') parts = ['🔔 Buzzers OPEN! ', h('span', { class: 'muted' }, `${secs}s`)];
+    else if (n.phase === 'saying') parts = [who(n.buzzer, n.buzzTeam), ': say your answer! ', count];
+    else if (n.phase === 'judging') parts = [who(n.buzzer, n.buzzTeam), ' is checking the answer on their phone… ', h('span', { class: 'muted' }, `${secs}s`)];
+    else if (n.phase === 'challenge') {
+      parts = [who(n.buzzer, n.buzzTeam), n.claim ? ' says ✅ got it.' : ' says ❌ missed it.',
+        n.challengedBy ? [' 🚩 ', who(n.challengedBy, state.players.find((p) => p.id === n.challengedBy)?.teamId), ' challenged!'] : [' Disagree? 🚩 Challenge on your phone ', count]];
+    }
+  } else if (state.reveal) {
+    el = 'nhR';
+    parts = [state.reveal.bonus ? 'Bonus next in ' : 'Back to the board in ', secs];
+  } else if (state.bonus) {
+    el = 'nhB';
+    parts = ['Other teams, vote on your phones: 👍 ', h('b', {}, n.votes.up), '  👎 ', h('b', {}, n.votes.down), ' ', h('span', { class: 'muted' }, `(${secs}s)`)];
+  } else if (state.sparkle?.hasCard) {
+    el = 'nhS';
+    const sp = state.sparkle;
+    if (n.phase === 'sparkleReady') parts = [who(sp.performerId, sp.teamId), ' is reading their card… ', count];
+    else if (n.phase === 'sparkleRun') parts = [sp.mode === 'mimic' ? 'The performer taps Done on their phone when finished.' : `${teamOf(sp.teamId)?.name || 'Their team'}, guess it! The performer taps "Guessed!" on their phone.`];
+    else if (n.phase === 'mimicVote') parts = ['Other teams, vote on your phones: 😂 ', h('b', {}, n.votes.lol), '  🙂 ', h('b', {}, n.votes.smile), '  😐 ', h('b', {}, n.votes.meh), ' ', h('span', { class: 'muted' }, `(${secs}s)`)];
+  }
+  ids.forEach((id) => show(id, id === el && parts.length > 0));
+  if (el && parts.length) fill(el, parts);
+}
+setInterval(nhTick, 250);
 
 // Animations and sounds, fired only when something changed since the last render.
 function effects(screen, oldPts) {

@@ -116,6 +116,7 @@
 
       <details id="customise" open>
         <summary>Customise</summary>
+        <div class="opt"><span class="opt-label">Host <button type="button" class="info" data-tip="No host: everyone plays. Buzzers open by themselves, players judge their own answers (others can challenge) and vote on bonuses, all from their phones." aria-label="No host: everyone plays. Buzzers open by themselves, players judge their own answers (others can challenge) and vote on bonuses, all from their phones.">ⓘ</button></span><div id="optHost" class="seg"></div></div>
         <div class="opt"><span class="opt-label">Boards <button type="button" class="info" data-tip="Board 1 is worth 100–500. Board 2 is worth double: 200–1000." aria-label="Board 1 is worth 100–500. Board 2 is worth double: 200–1000.">ⓘ</button></span><div id="optBoards" class="seg"></div></div>
         <div class="opt"><span class="opt-label">Sparkle Round <button type="button" class="info" data-tip="A party-game break (draw, act or mimic) after this many questions." aria-label="A party-game break (draw, act or mimic) after this many questions.">ⓘ</button></span><div id="optSparkle" class="seg"></div></div>
         <div class="opt"><span class="opt-label">Sparkle modes <button type="button" class="info" data-tip="Which party games the Sparkle Round can use." aria-label="Which party games the Sparkle Round can use.">ⓘ</button></span><div id="optModes" class="seg"></div></div>
@@ -163,6 +164,7 @@
       <span class="host-only"><button id="nextBoard" class="big hidden">Play Board 2 (Double!) →</button>
       <button id="finishBig" class="big hidden">🏆 See the winner</button></span>
     </div>
+    <div id="nhPicker" class="nh-status small hidden"></div>
     <div id="grid" class="grid"></div>
   </section>
 
@@ -183,6 +185,7 @@
       <button id="backToBoard" class="host-only secondary">Back to board</button>
     </div>
     <div id="peekBox" class="peek host-only hidden"></div>
+    <div id="nhQ" class="nh-status hidden" aria-live="polite"></div>
     <div class="row funny-row host-only" id="funnyRow"></div>
     <div id="qText" class="qtext"></div>
 
@@ -195,6 +198,7 @@
     <div class="reveal-label">The answer</div>
     <div id="revealAnswer" class="reveal-answer"></div>
     <div id="revealFact" class="qfact hidden"></div>
+    <div id="nhR" class="nh-status small hidden" aria-live="polite"></div>
     <div class="row host-only"><button id="revealNext" class="big"></button></div>
   </section>
 
@@ -203,6 +207,7 @@
     <div class="card-type" id="bonusFor"></div>
     <div id="bonusHelp" class="explain hidden">Do this challenge and the host gives your team the bonus points. Skipping is fine.</div>
     <div class="qtext" id="bonusText"></div>
+    <div id="nhB" class="nh-status hidden" aria-live="polite"></div>
     <div class="row host-only">
       <button id="bonusDone"></button>
       <button id="bonusSkip" class="secondary">Skip bonus</button>
@@ -238,6 +243,7 @@
       <div class="card-type" id="spType"></div>
       <div class="qtext" id="spText"></div>
       <div class="timer" id="spTimer"></div>
+      <div id="nhS" class="nh-status hidden" aria-live="polite"></div>
       <div class="row host-only">
         <button id="timerStart">▶ Start timer</button>
         <button id="timerStop" class="secondary">⏸ Stop timer</button>
