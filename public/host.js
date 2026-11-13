@@ -426,12 +426,23 @@ function tagRules() {
   ];
 }
 
+// The Sparkle games this game will use (shared with Customise), and whether Claude writes cards for them.
+const modesOn = () => Object.keys(MODES).filter((m) => setup.modes[m] !== false);
+const sparkleCards = () => setup.sparkleEvery > 0 && modesOn().length > 0;
+
 function makePrompt() {
   const topic = mo.topic.trim() || '(your topic)';
-  const sparkleRule = mo.sparkle
-    ? '- Also include "sparkle": "draw" with 6 easy, 6 medium, 6 tricky things to draw on this topic; "charades" with 10 things to act out; "mimic" with 8 "do X like Y" prompts. Light, kind, party-safe.'
+  const on = modesOn();
+  const asks = { draw: ['"draw" with 6 easy, 6 medium, 6 tricky things to draw on this topic', '6 easy, 6 medium, 6 tricky things to draw on this topic'],
+    charades: ['"charades" with 10 things to act out', '10 things to act out (Charades)'],
+    mimic: ['"mimic" with 8 "do X like Y" prompts', '8 "do X like Y" prompts (Mimic)'] };
+  const join = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join('; ')}; and ${xs[xs.length - 1]}` : xs[0]);
+  const sparkleRule = sparkleCards()
+    ? `- Also include "sparkle": ${join(on.map((m) => asks[m][0]))}. Light, kind, party-safe.${on.length < 3 ? ' Leave out the other Sparkle lists.' : ''}`
     : '- Do not include "sparkle".';
-  const sparkleShape = mo.sparkle ? ',"sparkle":{"draw":{"easy":[],"medium":[],"tricky":[]},"charades":[],"mimic":[]}' : '';
+  const shapes = { draw: '"draw":{"easy":[],"medium":[],"tricky":[]}', charades: '"charades":[]', mimic: '"mimic":[]' };
+  const sparkleShape = sparkleCards() ? `,"sparkle":{${on.map((m) => shapes[m]).join(',')}}` : '';
+  const rowLabels = { draw: 'Draw easy, Draw medium, Draw tricky', charades: 'Charades', mimic: 'Mimic' };
   const reply = mo.format === 'table' ? [
     'Reply with ONLY a CSV table in one code block, with exactly this header row:',
     'Board,Category,Points,Question,Answer,Bonus,Fun fact,Verify,How to play',
@@ -441,7 +452,7 @@ function makePrompt() {
     '- Then one row per question. Board is the board\'s name (the same on every row of that board). Points are that board\'s values.',
     '- Leave Fun fact empty when there isn\'t one. Verify is "yes" or empty. Fill How to play on the first row of each category only.',
     '- Put a cell in double quotes if it contains a comma or a quote, and write any quote inside it as "".',
-    mo.sparkle ? '- Sparkle cards go at the end, one per row, with the card in the Question column: Sparkle,Draw easy,,<thing> (also Draw medium, Draw tricky, Charades, Mimic).' : null,
+    sparkleCards() ? `- Sparkle cards go at the end, one per row, with the card in the Question column: Sparkle,${on[0] === 'draw' ? 'Draw easy' : rowLabels[on[0]]},,<thing> (Category is one of: ${on.map((m) => rowLabels[m]).join(', ')}).` : null,
     '- If you run out of space, stop at the end of a row. When I say "continue", carry on from the next row.',
   ] : [
     'Reply with ONLY one JSON object in one code block, in exactly this format:',
@@ -476,7 +487,7 @@ function makePrompt() {
     '- Only use facts you\'re confident about; if unsure set "verify": true.',
     '- Plain text only: no HTML, no links, no images, no song lyrics beyond 2–3 words.',
     '- Max lengths: question 300, answer 100, bonus 150, funFact 200 characters.',
-    mo.format === 'table' && mo.sparkle ? '- Also include Sparkle cards: 6 easy, 6 medium, 6 tricky things to draw on this topic; 10 things to act out (Charades); 8 "do X like Y" prompts (Mimic). Light, kind, party-safe.' : sparkleRule,
+    mo.format === 'table' && sparkleCards() ? `- Also include Sparkle cards: ${join(on.map((m) => asks[m][1]))}. Light, kind, party-safe.` : sparkleRule,
     ...tagRules(),
     '',
     'Before replying, reread every category name and rename any that would confuse a guest or sound unnatural.',
@@ -494,7 +505,17 @@ function renderMakeOwn() {
   moSeg('moTone', Object.entries(TONES).map(([k, [label]]) => [k, label]), mo.tone, (v) => (mo.tone = v));
   moSeg('moBoards', [[1, '1 board'], [2, '2 boards']], mo.boards, (v) => (mo.boards = v));
   moSeg('moRegion', Object.entries(REGIONS).map(([k, [label]]) => [k, label]), REGIONS[mo.region] ? mo.region : 'mixed', (v) => (mo.region = v));
-  moSeg('moSparkle', [[true, 'Yes'], [false, 'No']], mo.sparkle, (v) => (mo.sparkle = v));
+  fill('moModes', Object.entries(MODES).map(([m, info]) => {
+    const b = h('button', { class: `segbtn ${setup.modes[m] !== false ? 'on' : ''}`, type: 'button', 'aria-pressed': String(setup.modes[m] !== false) }, info.label);
+    b.onclick = () => { setup.modes = { ...setup.modes, [m]: setup.modes[m] === false }; saveSetup(); renderSetup(); };
+    return b;
+  }));
+  // Sparkle Round on/off (the same setting as Customise); when on, pick which games.
+  seg('moSparkle', [[true, 'On'], [false, 'Off']], sparkleCards(), (on) => {
+    setup.sparkleEvery = on ? setup.sparkleEvery || 6 : 0;
+    if (on && !modesOn().length) setup.modes = Object.fromEntries(Object.keys(MODES).map((m) => [m, true]));
+  });
+  show('moModesRow', sparkleCards());
   moSeg('moFormat', [['table', '📊 Table (Excel / Sheets)'], ['json', '{ } JSON']], mo.format, (v) => (mo.format = v));
   $('moHow').textContent = mo.format === 'table'
     ? 'Paste this into Claude. Copy its whole reply and paste it below. If Claude stops early, type "continue" and paste that reply underneath too. Want to review it first? Paste the table into Excel or Google Sheets, edit, then copy all the cells and paste them here (or save as CSV and upload).'
