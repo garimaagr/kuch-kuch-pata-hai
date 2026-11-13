@@ -20,7 +20,7 @@ const featured = require('./featured');
 const site = require('./site');
 
 const PORT = Number(process.env.PORT) || 3000;
-// The site's addresses (see site.js). PUBLIC_URL (e.g. https://buzzin-game.com) is used for join links,
+// The site's addresses (see site.js). PUBLIC_URL (e.g. https://www.buzzin-game.com) is used for join links,
 // QR codes and the remote pairing link; without it, they use the address the host page was opened on.
 const SITE = site.siteConfig();
 const PUBLIC_URL = SITE.publicUrl;
@@ -56,7 +56,8 @@ app.get('/healthz', (req, res) => {
   res.set({ 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   res.status(200).send('ok');
 });
-// www.buzzin-game.com and the onrender.com address -> PUBLIC_URL (301). Only when PUBLIC_URL is set.
+// buzzin-game.com and the onrender.com address -> PUBLIC_URL (www, 301). Only when PUBLIC_URL is set;
+// PUBLIC_URL's own host is never redirected (Render already sends the bare domain to www).
 app.use(site.canonicalRedirect(SITE));
 app.use((req, res, next) => {
   res.set({

@@ -1,4 +1,4 @@
-// PUBLIC_URL, ALLOWED_ORIGINS and the 301 to the public address (site.js, and the real server).
+// PUBLIC_URL (www is the main address), ALLOWED_ORIGINS and the 301 to it (site.js, and the real server).
 const test = require('node:test');
 const assert = require('node:assert');
 const http = require('http');
@@ -8,7 +8,7 @@ const { spawn } = require('child_process');
 const site = require('../site');
 
 const LIVE = {
-  PUBLIC_URL: 'https://buzzin-game.com/',
+  PUBLIC_URL: 'https://www.buzzin-game.com/',
   ALLOWED_ORIGINS: 'https://buzzin-game.com, https://www.buzzin-game.com ,https://kuch-kuch-pata-hai.onrender.com',
   RENDER_EXTERNAL_URL: 'https://kuch-kuch-pata-hai.onrender.com',
 };
@@ -23,15 +23,23 @@ test('originOf keeps only bare http(s) origins', () => {
 
 test('siteConfig: allowed origins and which hosts redirect', () => {
   const c = site.siteConfig(LIVE);
-  assert.strictEqual(c.publicUrl, 'https://buzzin-game.com');
+  assert.strictEqual(c.publicUrl, 'https://www.buzzin-game.com');
   assert.deepStrictEqual([...c.allowedOrigins], ['https://buzzin-game.com', 'https://www.buzzin-game.com', 'https://kuch-kuch-pata-hai.onrender.com']);
-  assert.deepStrictEqual([...c.redirectHosts], ['www.buzzin-game.com', 'kuch-kuch-pata-hai.onrender.com']);
+  assert.deepStrictEqual([...c.redirectHosts], ['buzzin-game.com', 'kuch-kuch-pata-hai.onrender.com'], 'never www itself');
   // PUBLIC_URL is always allowed; nothing redirects without it.
   assert.deepStrictEqual([...site.siteConfig({ PUBLIC_URL: 'https://buzzin-game.com' }).allowedOrigins], ['https://buzzin-game.com']);
   const noPublic = site.siteConfig({ ALLOWED_ORIGINS: LIVE.ALLOWED_ORIGINS, RENDER_EXTERNAL_URL: LIVE.RENDER_EXTERNAL_URL });
   assert.strictEqual(noPublic.redirectHosts.size, 0);
   assert.strictEqual(noPublic.allowedOrigins.size, 3);
   assert.deepStrictEqual(site.siteConfig({}), { publicUrl: '', allowedOrigins: new Set(), redirectHosts: new Set() });
+});
+
+test('canonicalRedirect never redirects PUBLIC_URL\'s own host, even if it were listed', () => {
+  const mw = site.canonicalRedirect({ publicUrl: 'https://www.buzzin-game.com', redirectHosts: new Set(['www.buzzin-game.com', 'buzzin-game.com']) });
+  const run = (host, p = '/host') => { let out = 'next'; mw({ headers: { host }, path: p, originalUrl: p, method: 'GET' }, { redirect: (s, l) => { out = [s, l]; } }, () => {}); return out; };
+  assert.strictEqual(run('www.buzzin-game.com'), 'next');
+  assert.deepStrictEqual(run('buzzin-game.com'), [301, 'https://www.buzzin-game.com/host']);
+  assert.strictEqual(run('buzzin-game.com', '/healthz'), 'next');
 });
 
 test('originAllowed: the list when set, else the page\'s own address', () => {
@@ -85,26 +93,31 @@ async function startServer(t, env) {
   return port;
 }
 
-test('live settings: www and onrender.com 301 to buzzin-game.com (not /healthz); /admin checks ALLOWED_ORIGINS', async (t) => {
+test('live settings: the bare domain and onrender.com 301 to www (not /healthz), www never redirects; /admin checks ALLOWED_ORIGINS', async (t) => {
   const port = await startServer(t, LIVE);
-  for (const host of ['www.buzzin-game.com', 'kuch-kuch-pata-hai.onrender.com', 'WWW.Buzzin-Game.com']) {
+  for (const host of ['buzzin-game.com', 'kuch-kuch-pata-hai.onrender.com', 'Buzzin-Game.com']) {
     const res = await request(port, { path: '/join/ABCD?x=1', headers: { host } });
-    assert.deepStrictEqual([res.status, res.location], [301, 'https://buzzin-game.com/join/ABCD?x=1'], host);
+    assert.deepStrictEqual([res.status, res.location], [301, 'https://www.buzzin-game.com/join/ABCD?x=1'], host);
   }
-  assert.strictEqual((await request(port, { method: 'HEAD', path: '/host', headers: { host: 'www.buzzin-game.com' } })).status, 301);
-  const post = await request(port, { method: 'POST', path: '/admin/api/login', headers: { host: 'www.buzzin-game.com' } });
-  assert.deepStrictEqual([post.status, post.location], [308, 'https://buzzin-game.com/admin/api/login'], 'a POST stays a POST');
-  for (const host of ['www.buzzin-game.com', 'kuch-kuch-pata-hai.onrender.com', 'buzzin-game.com']) {
+  assert.strictEqual((await request(port, { method: 'HEAD', path: '/host', headers: { host: 'buzzin-game.com' } })).status, 301);
+  const post = await request(port, { method: 'POST', path: '/admin/api/login', headers: { host: 'kuch-kuch-pata-hai.onrender.com' } });
+  assert.deepStrictEqual([post.status, post.location], [308, 'https://www.buzzin-game.com/admin/api/login'], 'a POST stays a POST');
+  // www is the main address: nothing on it redirects (Render sends the bare domain to www, so this would loop).
+  for (const [method, p] of [['GET', '/'], ['GET', '/host'], ['GET', '/join/ABCD'], ['GET', '/admin'], ['HEAD', '/host'], ['GET', '/remote']]) {
+    const res = await request(port, { method, path: p, headers: { host: 'www.buzzin-game.com' } });
+    assert.ok(res.location !== 'https://www.buzzin-game.com' + p && ![301, 308].includes(res.status), `${method} ${p} on www`);
+  }
+  for (const host of ['buzzin-game.com', 'kuch-kuch-pata-hai.onrender.com', 'www.buzzin-game.com']) {
     const res = await request(port, { path: '/healthz', headers: { host } });
     assert.deepStrictEqual([res.status, res.body], [200, 'ok'], `/healthz on ${host}`);
   }
-  assert.strictEqual((await request(port, { path: '/host', headers: { host: 'buzzin-game.com' } })).status, 200, 'the public address itself');
+  assert.strictEqual((await request(port, { path: '/host', headers: { host: 'www.buzzin-game.com' } })).status, 200, 'the public address itself');
 
-  const login = (origin) => request(port, { method: 'POST', path: '/admin/api/login', headers: { host: 'buzzin-game.com', 'content-type': 'application/json', ...(origin ? { origin } : {}) } });
+  const login = (origin) => request(port, { method: 'POST', path: '/admin/api/login', headers: { host: 'www.buzzin-game.com', 'content-type': 'application/json', ...(origin ? { origin } : {}) } });
   for (const origin of ['https://buzzin-game.com', 'https://www.buzzin-game.com', 'https://kuch-kuch-pata-hai.onrender.com']) {
     assert.notStrictEqual((await login(origin)).status, 403, origin);
   }
-  for (const origin of ['https://evil.example', 'http://buzzin-game.com', undefined]) {
+  for (const origin of ['https://evil.example', 'http://www.buzzin-game.com', undefined]) {
     assert.strictEqual((await login(origin)).status, 403, String(origin));
   }
 });

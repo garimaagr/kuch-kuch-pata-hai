@@ -1,4 +1,4 @@
-// The site's addresses: the public one (PUBLIC_URL), which origins may post to /admin
+// The site's addresses: the public one (PUBLIC_URL, e.g. https://www.buzzin-game.com), which origins may post to /admin
 // (ALLOWED_ORIGINS) and which other hosts are sent to the public one with a 301.
 
 // "https://Example.com/" -> "https://example.com". Anything that isn't a bare http(s) origin -> ''.
@@ -20,7 +20,8 @@ function siteConfig(env = process.env) {
   const listed = String(env.ALLOWED_ORIGINS || '').split(',').map(originOf).filter(Boolean);
   // PUBLIC_URL is always allowed, so a typo in the list can't lock you out of /admin.
   const allowedOrigins = new Set([...listed, ...(publicUrl ? [publicUrl] : [])]);
-  // Other addresses of this same site (www, onrender.com) redirect to PUBLIC_URL.
+  // Other addresses of this same site (e.g. the bare domain, onrender.com) redirect to PUBLIC_URL.
+  // PUBLIC_URL's own host is never one of them, so the app can't loop with a redirect in front of it.
   const redirectHosts = new Set();
   if (publicUrl) {
     for (const o of [...listed, originOf(env.RENDER_EXTERNAL_URL)]) {
@@ -30,13 +31,14 @@ function siteConfig(env = process.env) {
   return { publicUrl, allowedOrigins, redirectHosts };
 }
 
-// Express middleware: www / onrender.com -> PUBLIC_URL, same path and query. /healthz never redirects.
+// Express middleware: the bare domain / onrender.com -> PUBLIC_URL, same path and query.
+// Never redirects PUBLIC_URL's own host, and never /healthz.
 // 301 for GET/HEAD; 308 for anything else so a POST stays a POST.
 function canonicalRedirect({ publicUrl, redirectHosts }) {
   return (req, res, next) => {
     if (!publicUrl || !redirectHosts.size || req.path === '/healthz') return next();
     const host = String(req.headers.host || '').toLowerCase();
-    if (!redirectHosts.has(host)) return next();
+    if (host === hostOf(publicUrl) || !redirectHosts.has(host)) return next();
     res.redirect(req.method === 'GET' || req.method === 'HEAD' ? 301 : 308, publicUrl + req.originalUrl);
   };
 }

@@ -83,12 +83,12 @@ Hosted on Render, the game has a public https link, so phones can join on any ne
 3. In Render, click **New → Blueprint**, pick the repository and click **Apply**. Render reads `render.yaml` and creates a free web service.
 4. When the deploy finishes, open `https://<your-service>.onrender.com/host`. The QR code and join link use that address automatically.
 
-**Your own domain (e.g. buzzin-game.com)**
-1. In Render, open the service → **Settings** → **Custom Domains**, add `buzzin-game.com` and `www.buzzin-game.com`, and set the DNS records Render shows at your domain registrar. Wait until Render shows both as verified (with a certificate).
+**Your own domain (the main address is www.buzzin-game.com)**
+1. In Render, open the service → **Settings** → **Custom Domains**, add `www.buzzin-game.com` and `buzzin-game.com`, and set the DNS records Render shows at your domain registrar. Wait until Render shows both as verified (with a certificate). Render itself redirects `buzzin-game.com` → `www.buzzin-game.com`.
 2. Then in **Environment**, add:
-   - `PUBLIC_URL` = `https://buzzin-game.com`. QR codes, join links and the phone-remote pairing link use it. Without it, they use whatever address the host page was opened on.
+   - `PUBLIC_URL` = `https://www.buzzin-game.com`. QR codes, join links and the phone-remote pairing link use it. Without it, they use whatever address the host page was opened on.
    - `ALLOWED_ORIGINS` = `https://buzzin-game.com,https://www.buzzin-game.com,https://kuch-kuch-pata-hai.onrender.com`. These are the addresses `/admin` accepts changes from. `PUBLIC_URL` is always allowed. Without the list, `/admin` accepts only the address it was opened on.
-3. Once `PUBLIC_URL` is set, `www.buzzin-game.com`, the `onrender.com` address and anything else in `ALLOWED_ORIGINS` redirect to `https://buzzin-game.com` with a 301 (same path). `/healthz` never redirects, so health checks work on every address. Set `PUBLIC_URL` only after step 1 works, or the `onrender.com` address will redirect to a domain that doesn't answer yet.
+3. Once `PUBLIC_URL` is set, the `onrender.com` address, `buzzin-game.com` (if a request reaches the app) and anything else in `ALLOWED_ORIGINS` redirect to `https://www.buzzin-game.com` with a 301 (same path). `PUBLIC_URL`'s own address is never redirected, so the app can't loop with Render's redirect. `/healthz` never redirects, so health checks work on every address. Set `PUBLIC_URL` only after step 1 works, or the `onrender.com` address will redirect to a domain that doesn't answer yet.
 
 **Health check:** `GET /healthz` answers `ok`. It doesn't touch the database or games, and isn't rate-limited or logged. `render.yaml` uses it as Render's health check.
 
