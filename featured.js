@@ -8,13 +8,13 @@ const { validatePack, BOARD_VALUES, LIMITS } = require('./pack');
 
 // Built-in packs live in packs/<id>.json. Ids come from this folder, never from a visitor.
 const PACK_DIR = path.join(__dirname, 'packs');
-const DEFAULT_PACK = 'desi';
+const DEFAULT_PACK = 'world';
 const MAX_CATEGORIES = LIMITS.builtin.maxCategories; // per board, file categories + extras
 
 // The theme cards on the setup screen, in order. A theme without a pack file shows as "coming soon".
 const THEMES = [
-  { id: 'desi', name: 'Desi Night', emoji: '🎬' },
   { id: 'world', name: 'World Trivia', emoji: '🌍' },
+  { id: 'desi', name: 'Desi Night', emoji: '🎬' },
   { id: 'tv', name: 'TV & Movies', emoji: '📺' },
   { id: 'sports', name: 'Sports', emoji: '🏆' },
 ];

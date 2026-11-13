@@ -85,7 +85,7 @@ function gotRoom(res) {
 // ---- Setup screen: theme cards, Start, and the optional Customise options ----
 let setupOpen = false;
 let packs = []; // theme summaries from the server (names and categories only)
-const SETUP_DEFAULTS = { packId: 'desi', boards: 'both', sparkleEvery: 6, modes: { draw: true, charades: true, mimic: true }, bonuses: true, double: true, cats: {} };
+const SETUP_DEFAULTS = { packId: 'world', boards: 'both', sparkleEvery: 6, modes: { draw: true, charades: true, mimic: true }, bonuses: true, double: true, cats: {} };
 let setup = (() => {
   try { return { ...SETUP_DEFAULTS, ...JSON.parse(load('fbSetup') || '{}') }; } catch { return { ...SETUP_DEFAULTS }; }
 })();
@@ -185,7 +185,7 @@ function closeDetail() {
 
 function switchTab(tab) {
   setupTab = tab;
-  if (tab === 'featured') setup.packId = packOf(setup.lastFeatured) ? setup.lastFeatured : packs.find((p) => !p.missing)?.id || 'desi';
+  if (tab === 'featured') setup.packId = packOf(setup.lastFeatured) ? setup.lastFeatured : packs.find((p) => !p.missing)?.id || 'world';
   else if (tab === 'make') setup.packId = 'custom';
   else { setup.packId = null; refreshCommunity(); } // details open when a board is picked
   saveSetup();
@@ -255,7 +255,7 @@ function openSetup() {
   setupTab = tabOf(setup.packId);
   socket.emit('host:packs', (list) => {
     packs = Array.isArray(list) ? list : [];
-    if (setupTab === 'featured' && !packOf(setup.packId)) setup.packId = packs.find((p) => !p.missing)?.id || 'desi';
+    if (setupTab === 'featured' && !packOf(setup.packId)) setup.packId = packs.find((p) => !p.missing)?.id || 'world';
     render();
   });
   loadCommunityTags().then(async () => {
