@@ -81,7 +81,7 @@ Your phone now shows the answer and fun fact, the buttons, the Sparkle secret wo
    - **Want to review it first (Table)?** Paste the table into Excel or Google Sheets, fix anything, then select all the cells, copy, and paste them into the box. Or save as **CSV** and use **📂 Upload .csv / .json**. (.xlsx files aren't read directly: save as CSV first.)
 5. Click **✔ Check pack**. If something's wrong, you'll see a list like `"Saturday Morning" → "Theme Tunes" has 4 questions, needs 5`. Fix it, or copy those lines back to Claude.
 6. Read the **⚠️ Check these** list: facts Claude wasn't sure of (🔍 verify).
-7. Keep a copy with **⬇ Download for Excel (.csv)** or **⬇ Download pack (.json)**. Either file can be uploaded next time. Then **▶ Start game with this pack**.
+7. Keep a copy with **⬇ Download for Excel (.csv)** or **⬇ Download pack (.json)**. Either file can be uploaded next time. Then choose **Host** (Someone hosts, or No host so everyone plays; this is for this game only, not saved in the pack) and **▶ Start game with this pack**.
 
 **Table columns:** `Board, Category, Points, Question, Answer, Bonus, Fun fact, Verify, How to play` (How to play only needs filling on a category's first row). An optional first row `Pack, <name>, <emoji>` sets the pack's name; otherwise the topic is used. Up to 4 rows `Team, <team name>` set the team names (Claude adds them; without them the teams are Team Red, Yellow, Green and Pink). Sparkle cards are rows like `Sparkle, Draw easy, , <thing>` (also `Draw medium`, `Draw tricky`, `Charades`, `Mimic`). Board 1 uses 100–500 points and Board 2 uses 200–1000.
 

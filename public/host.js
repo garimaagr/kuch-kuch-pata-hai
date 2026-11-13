@@ -547,8 +547,11 @@ function renderMakeOwn() {
             h('div', { class: 'where' }, c.where), c.question, ' → ', h('b', {}, c.answer),
             h('span', {}, '  🔍 verify this fact'))))]
         : h('div', { class: 'muted' }, 'Nothing flagged to check.'),
+      // Host is chosen for this game only, not saved in the pack (same setting as Customise).
+      h('div', { class: 'opt' }, h('span', { class: 'opt-label' }, 'Host'), h('div', { id: 'moHost', class: 'seg' })),
       h('div', { class: 'row' }, startBtn, dlCsv, dl),
       shareSection()));
+    seg('moHost', [['host', 'Someone hosts'], ['nohost', 'No host (everyone plays)']], setup.host === 'nohost' ? 'nohost' : 'host', (v) => (setup.host = v));
   } else {
     fill('moResult');
   }
