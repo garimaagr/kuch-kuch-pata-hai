@@ -32,10 +32,11 @@ test('the duplicate check ignores the name, tags, case and spacing, but not the 
 });
 
 test('"Made by" is cleaned; links are refused; empty means anonymous', () => {
-  assert.deepStrictEqual(c.cleanMadeBy('  Asha \n'), { value: 'Asha' });
-  assert.deepStrictEqual(c.cleanMadeBy(''), { value: null });
-  assert.deepStrictEqual(c.cleanMadeBy(undefined), { value: null });
-  assert.deepStrictEqual(c.cleanMadeBy('<b>Jeff</b>'), { value: '<b>Jeff</b>' }, 'kept as text, shown as text');
+  assert.deepStrictEqual(c.cleanMadeBy('  Asha \n'), { value: 'Asha', stripped: false });
+  assert.deepStrictEqual(c.cleanMadeBy(''), { value: null, stripped: false });
+  assert.deepStrictEqual(c.cleanMadeBy(undefined), { value: null, stripped: false });
+  assert.deepStrictEqual(c.cleanMadeBy('<b>Jeff</b>'), { value: 'Jeff', stripped: true }, 'HTML-looking tags are removed');
+  assert.deepStrictEqual(c.cleanMadeBy('Jeff <3'), { value: 'Jeff <3', stripped: false }, '<3 is not a tag');
   for (const bad of ['jeff.com', 'see www.x.org', 'https://evil.example', 'mysite.io/me']) assert.match(c.cleanMadeBy(bad).error, /link/);
   assert.match(c.cleanMadeBy('x'.repeat(31)).error, /too long/);
 });
@@ -59,7 +60,8 @@ test('submitting for review', { skip: !URL && 'set TEST_DATABASE_URL to run' }, 
     assert.deepStrictEqual(res, { ok: true, message: 'Thanks! It\'ll appear in Community once it\'s approved.' });
     const row = (await db.query('SELECT * FROM packs')).rows[0];
     assert.strictEqual(row.status, 'pending');
-    assert.strictEqual(row.made_by, '<i>Jeff</i>');
+    assert.strictEqual(row.made_by, 'Jeff', 'tags removed');
+    assert.strictEqual(row.html_stripped, true, 'flagged for the admin');
     assert.strictEqual(row.suggested_tag, 'Bollywood Nights');
     assert.strictEqual(row.kid_friendly, true);
     assert.deepStrictEqual(row.board_names, ['Board one']);
@@ -70,6 +72,19 @@ test('submitting for review', { skip: !URL && 'set TEST_DATABASE_URL to run' }, 
     assert.strictEqual(cats[0].questions.length, 5);
     const tags = (await db.query('SELECT t.name FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = $1 ORDER BY t.name', [row.id])).rows.map((r) => r.name);
     assert.deepStrictEqual(tags, ['Movies', 'TV'], 'the tags the person ticked');
+  });
+
+  await t.test('HTML-looking tags in the pack are removed and flagged; clean boards are not flagged', async () => {
+    const p = pack(150, { name: '<b>Bold</b> Board' });
+    p.boards[0].categories[0].questions[0].question = 'Who sang <i>Thriller</i>? I <3 it';
+    assert.ok((await submit(p, {}, '10.0.0.150')).ok);
+    const row = (await db.query("SELECT id, name, html_stripped FROM packs WHERE name = 'Bold Board'")).rows[0];
+    assert.ok(row, 'saved with the cleaned name');
+    assert.strictEqual(row.html_stripped, true);
+    const q = (await db.query('SELECT questions FROM categories WHERE pack_id = $1 AND position = 0', [row.id])).rows[0].questions[0].question;
+    assert.strictEqual(q, 'Who sang Thriller ? I <3 it');
+    assert.ok((await submit(pack(151), { madeBy: 'Plain' }, '10.0.0.151')).ok);
+    assert.strictEqual((await db.query("SELECT html_stripped FROM packs WHERE name = 'Pack 151'")).rows[0].html_stripped, false);
   });
 
   await t.test('a duplicate pack is refused, even renamed', async () => {
@@ -125,7 +140,7 @@ test('public: only approved boards are listed or loadable', { skip: !URL && 'set
   };
   const shareAny = share;
 
-  const spooky = await shareAny(pack(201, { name: 'Spooky <Night>', sparkle: { charades: ['Ghost'] } }), ['Holidays'], { kidFriendly: false });
+  const spooky = await shareAny(pack(201, { name: 'Spooky Night', sparkle: { charades: ['Ghost'] } }), ['Holidays'], { kidFriendly: false });
   const toons = await shareAny(pack(202, { name: 'Saturday Toons' }), ['Cartoons & Kids', 'TV'], { kidFriendly: true });
   const pending = await shareAny(pack(203, { name: 'Still Pending' }), ['TV']);
 
@@ -141,10 +156,10 @@ test('public: only approved boards are listed or loadable', { skip: !URL && 'set
   assert.deepStrictEqual(tags.tags.map((x) => [x.name, x.boards]), [['Cartoons & Kids', 1], ['Holidays', 1], ['TV', 1]], 'only tags with approved boards (the pending TV board isn\'t counted)');
 
   const all = (await c.listBoards()).boards;
-  assert.deepStrictEqual(all.map((b) => b.name).sort(), ['Saturday Toons', 'Spooky <Night>']);
+  assert.deepStrictEqual(all.map((b) => b.name).sort(), ['Saturday Toons', 'Spooky Night']);
   assert.ok(!all.some((b) => b.id === pending));
   const toonsCard = all.find((b) => b.id === toons);
-  assert.deepStrictEqual(Object.keys(toonsCard).sort(), ['emoji', 'id', 'kidFriendly', 'madeBy', 'name', 'playCount', 'tags']);
+  assert.deepStrictEqual(Object.keys(toonsCard).sort(), ['emoji', 'id', 'isNew', 'kidFriendly', 'madeBy', 'name', 'playCount', 'tags']);
   assert.deepStrictEqual(toonsCard.tags.map((x) => x.slug), ['cartoons-and-kids', 'tv']);
 
   // Filters: tag, search, kid-friendly; Surprise me respects tag + kid-friendly.
@@ -155,6 +170,30 @@ test('public: only approved boards are listed or loadable', { skip: !URL && 'set
   assert.deepStrictEqual((await c.listBoards({ tag: "x' OR 1=1 --" })).boards.length, 2, 'a bad tag is ignored, not run');
   for (let i = 0; i < 5; i++) assert.strictEqual(await c.randomBoard({ kid: '1' }), toons);
   assert.strictEqual(await c.randomBoard({ tag: 'holidays', kid: '1' }), null);
+
+  // Search also matches tag names, "Made by" and category names. % _ and \ are plain text.
+  await db.query("UPDATE categories SET name = 'Haunted Houses' WHERE pack_id = $1 AND position = 0", [spooky]);
+  const ids = async (q) => (await c.listBoards({ q })).boards.map((b) => b.id).sort();
+  assert.deepStrictEqual(await ids('holidays'), [spooky], 'a tag name');
+  assert.deepStrictEqual(await ids('cartoons'), [toons], 'a tag name');
+  assert.deepStrictEqual(await ids('secret sam'), [spooky, toons].sort(), '"Made by"');
+  assert.deepStrictEqual(await ids('HAUNTED'), [spooky], 'a category name, any case');
+  assert.deepStrictEqual(await ids('T_ons'), [], '_ is not a wildcard');
+  assert.deepStrictEqual(await ids('Spooky%Night'), [], '% is not a wildcard');
+  assert.deepStrictEqual(await ids('\\'), []);
+  assert.deepStrictEqual((await c.listBoards({ q: 'tv', kid: '1' })).boards.map((b) => b.id), [toons], 'search + kids only');
+  assert.strictEqual(c.searchPattern('50%_off'), '%50\\%\\_off%');
+
+  // ✨ New this week: approved in the last 7 days, newest first; Kids only filters it and the tag counts.
+  assert.ok(all.every((b) => b.isNew), 'just approved = new');
+  await db.query("UPDATE packs SET reviewed_at = now() - interval '8 days' WHERE id = $1", [spooky]);
+  assert.deepStrictEqual((await c.newBoards()).boards.map((b) => b.id), [toons]);
+  assert.strictEqual((await c.listBoards({ tag: 'holidays' })).boards[0].isNew, false);
+  await db.query("UPDATE packs SET reviewed_at = now() - interval '1 day' WHERE id = $1", [spooky]);
+  assert.deepStrictEqual((await c.newBoards()).boards.map((b) => b.id), [toons, spooky], 'newest first');
+  assert.deepStrictEqual((await c.newBoards({ kid: '1' })).boards.map((b) => b.id), [toons]);
+  const kidTags = await c.publicTags({ kid: '1' });
+  assert.deepStrictEqual([kidTags.total, kidTags.tags.map((x) => x.name)], [2, ['Cartoons & Kids', 'TV']], 'counts only kid-friendly boards; total stays all boards');
 
   // A board loads as a pack that passes the strict upload rules, without its review details.
   const loaded = await c.loadPack(spooky);
@@ -182,4 +221,6 @@ test('public: only approved boards are listed or loadable', { skip: !URL && 'set
   const p0 = await c.listBoards({ page: 0 });
   const p1 = await c.listBoards({ page: '1' });
   assert.deepStrictEqual([p0.boards.length, p0.more, p1.boards.length, p1.more], [20, true, 6, false]);
+  await db.query("UPDATE packs SET reviewed_at = now() WHERE name LIKE 'Filler %'");
+  assert.strictEqual((await c.newBoards()).boards.length, c.NEW_MAX, 'New this week shows at most 6');
 });

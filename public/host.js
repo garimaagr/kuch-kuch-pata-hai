@@ -99,7 +99,11 @@ const packOf = (id) => (id === 'custom' ? customSummary()
 let setupTab = 'featured';
 const tabOf = (id) => (id === 'custom' ? 'make' : isCommunityId(id) ? 'community' : 'featured');
 let communityPick = null; // the chosen community board's summary (names and categories only)
-const comm = { total: 0, tags: [], tag: null, q: '', kid: false, boards: [], more: false, page: 0, loading: false, error: null, msg: '' };
+// 🌐 Community. Three views: home (🎲, a tile per tag, ✨ New this week), one tag's boards, and search results.
+// Kids only filters all of them to kid-friendly boards.
+const comm = { total: 0, tags: [], newBoards: [], tag: null, q: '', kid: false, boards: [], more: false, page: 0, loading: false, homeLoading: false, error: null, msg: '' };
+const commView = () => (comm.q.trim() ? 'search' : comm.tag ? 'tag' : 'home');
+const kidQuery = () => (comm.kid ? 'kid=1' : '');
 
 async function getJson(url) {
   let res;
@@ -109,12 +113,23 @@ async function getJson(url) {
   return data;
 }
 
-// Tag chips and whether the Community tab shows at all (it needs at least 1 approved board).
+// Tag tiles (with counts) and whether the Community tab shows at all (it needs at least 1 approved board).
 async function loadCommunityTags() {
-  try { const d = await getJson('/api/community/tags'); comm.total = d.total; comm.tags = d.tags; }
+  try { const d = await getJson('/api/community/tags?' + kidQuery()); comm.total = d.total; comm.tags = d.tags; }
   catch { comm.total = 0; comm.tags = []; }
-  if (comm.tag && !comm.tags.some((t) => t.slug === comm.tag)) comm.tag = null;
   if (!comm.total && setupTab === 'community') switchTab('featured');
+}
+
+let homeSeq = 0; // only the latest load is shown
+async function loadCommunityHome() {
+  const seq = ++homeSeq;
+  comm.homeLoading = true; comm.error = null;
+  renderCommunity();
+  try {
+    const [, fresh] = await Promise.all([loadCommunityTags(), getJson('/api/community/new?' + kidQuery())]);
+    if (seq === homeSeq) comm.newBoards = fresh.boards;
+  } catch (err) { if (seq === homeSeq) { comm.newBoards = []; comm.error = err.message; } }
+  if (seq === homeSeq) { comm.homeLoading = false; renderCommunity(); }
 }
 
 let commSeq = 0; // only the latest search's results are shown
@@ -122,10 +137,11 @@ async function loadCommunity(more = false) {
   const seq = ++commSeq;
   const page = more ? comm.page + 1 : 0;
   const q = new URLSearchParams({ page });
-  if (comm.tag) q.set('tag', comm.tag);
-  if (comm.q.trim()) q.set('q', comm.q.trim());
+  if (commView() === 'search') q.set('q', comm.q.trim()); // search looks at every tag
+  else if (comm.tag) q.set('tag', comm.tag);
   if (comm.kid) q.set('kid', '1');
   comm.loading = true; comm.error = null; comm.msg = '';
+  if (!more) comm.boards = [];
   renderCommunity();
   try {
     const d = await getJson('/api/community/boards?' + q);
@@ -135,8 +151,9 @@ async function loadCommunity(more = false) {
   } catch (err) { if (seq === commSeq) comm.error = err.message; }
   if (seq === commSeq) { comm.loading = false; renderCommunity(); }
 }
+const refreshCommunity = () => (commView() === 'home' ? loadCommunityHome() : loadCommunity());
 
-// Opens a community board's summary + Customise, like a Featured theme.
+// Opens a community board's summary + Customise in the side panel.
 async function pickCommunity(id) {
   try {
     communityPick = await getJson('/api/community/boards/' + encodeURIComponent(id));
@@ -147,30 +164,75 @@ async function pickCommunity(id) {
   setup.packId = communityPick.id;
   saveSetup();
   renderSetup();
-  $('themeDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  $('detailClose').focus();
+}
+// 🎲 a random approved board: in one tag, or any (null). Respects Kids only.
+async function surprise(tag) {
+  const q = new URLSearchParams();
+  if (tag) q.set('tag', tag);
+  if (comm.kid) q.set('kid', '1');
+  try { await pickCommunity((await getJson('/api/community/random?' + q)).id); }
+  catch (err) { comm.msg = err.status === 404 ? (comm.kid ? 'No kid-friendly boards there yet.' : 'No boards there yet.') : err.message; renderCommunity(); }
+}
+function closeDetail() {
+  if (!setupOpen || setupTab !== 'community' || !isCommunityId(setup.packId)) return;
+  const id = setup.packId.slice(2);
+  setup.packId = null;
+  saveSetup();
+  renderSetup();
+  document.querySelector(`#community [data-id="${CSS.escape(id)}"]`)?.focus();
 }
 
 function switchTab(tab) {
   setupTab = tab;
   if (tab === 'featured') setup.packId = packOf(setup.lastFeatured) ? setup.lastFeatured : packs.find((p) => !p.missing)?.id || 'desi';
   else if (tab === 'make') setup.packId = 'custom';
-  else { setup.packId = communityPick?.id || null; if (!comm.boards.length) loadCommunity(); }
+  else { setup.packId = null; refreshCommunity(); } // details open when a board is picked
   saveSetup();
   renderSetup();
 }
 
-function renderCommunity() {
-  const chip = (slug, label) => h('button', { class: `segbtn ${comm.tag === slug ? 'on' : ''}`, type: 'button', data: { tag: slug ?? '' } }, label);
-  fill('commTags', chip(null, `All (${comm.total})`), comm.tags.map((t) => chip(t.slug, `${t.emoji} ${t.name} (${t.boards})`.trim())));
-  const cards = comm.boards.map((b) => h('button', { class: `theme comm-card ${setup.packId === 'c:' + b.id ? 'selected' : ''}`, data: { id: b.id } },
+const pill = (cls, text) => h('span', { class: `pill ${cls}` }, text);
+const tagLine = (tags) => tags.map((t) => `${t.emoji} ${t.name}`.trim()).join(' · ');
+// A board: a card (✨ New this week) or a compact row (a tag's boards, search results).
+function commCard(b, compact = false) {
+  const meta = [b.madeBy ? `Made by ${b.madeBy}` : null, b.playCount > 0 ? `Played ${b.playCount} time${b.playCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
+  return h('button', { class: `theme comm-card ${compact ? 'compact' : ''} ${setup.packId === 'c:' + b.id ? 'selected' : ''}`, type: 'button', data: { id: b.id } },
     h('div', { class: 'theme-emoji' }, b.emoji || '🎲'),
     h('div', { class: 'comm-info' },
-      h('div', { class: 'theme-name' }, b.name),
-      h('div', { class: 'comm-tagline' }, b.tags.map((t) => `${t.emoji} ${t.name}`.trim()).join(' · ')),
-      h('div', { class: 'comm-meta' }, [b.madeBy ? `Made by ${b.madeBy}` : null, `Played ${b.playCount} time${b.playCount === 1 ? '' : 's'}`, b.kidFriendly ? '👨‍👩‍👧' : null].filter(Boolean).join(' · ')))));
-  const note = comm.error || comm.msg || (comm.loading && !comm.boards.length ? 'Loading…' : !comm.boards.length ? 'No boards match. Try another tag or search.' : null);
-  fill('commCards', cards, note ? h('p', { class: 'muted comm-note' }, note) : null);
-  show('commMore', comm.more && !comm.loading);
+      h('div', { class: 'theme-name' }, b.name, b.isNew || b.kidFriendly ? h('span', { class: 'pills' }, b.isNew ? pill('pill-new', 'New') : null, b.kidFriendly ? pill('pill-kids', 'Kids') : null) : null),
+      b.tags.length ? h('div', { class: 'comm-tagline' }, tagLine(b.tags)) : null,
+      meta ? h('div', { class: 'comm-meta' }, meta) : null));
+}
+
+function renderCommunity() {
+  const view = commView();
+  show('commHome', view === 'home');
+  show('commListWrap', view !== 'home');
+  let note = comm.error || comm.msg || null;
+
+  if (view === 'home') {
+    fill('commTiles', comm.tags.map((t) => h('div', { class: 'comm-tile' },
+      h('div', { class: 'comm-tile-emoji' }, t.emoji || '🏷️'),
+      h('div', { class: 'comm-tile-name' }, t.name),
+      h('div', { class: 'comm-tile-count' }, `${t.boards} board${t.boards === 1 ? '' : 's'}`),
+      h('div', { class: 'comm-tile-actions' },
+        h('button', { class: 'secondary', type: 'button', data: { browse: t.slug } }, 'Browse'),
+        h('button', { class: 'secondary', type: 'button', data: { random: t.slug }, 'aria-label': `Surprise me: a random ${t.name} board`, title: 'Surprise me' }, '🎲')))));
+    fill('commNew', comm.newBoards.map((b) => commCard(b)));
+    show('commNewWrap', comm.newBoards.length > 0);
+    $('commSurprise').disabled = !comm.tags.length;
+    if (!note && !comm.tags.length) note = comm.homeLoading ? 'Loading…' : comm.kid ? 'No kid-friendly boards yet.' : 'No boards yet.';
+  } else {
+    const t = comm.tags.find((x) => x.slug === comm.tag);
+    $('commListTitle').textContent = view === 'search' ? `Boards matching “${comm.q.trim()}”` : `${t?.emoji || ''} ${t?.name || 'Boards'}`.trim();
+    show('commBack', view === 'tag');
+    fill('commCards', comm.boards.map((b) => commCard(b, true)));
+    show('commMore', comm.more && !comm.loading);
+    if (!note && !comm.boards.length) note = comm.loading ? 'Loading…' : view === 'search' ? 'No boards match. Try another word.' : 'No boards here yet.';
+  }
+  $('commNote').textContent = note || '';
+  show('commNote', !!note);
 }
 
 // The host's category picks for one board of the chosen pack (default flags unless they changed them).
@@ -202,7 +264,7 @@ function openSetup() {
       try { communityPick = await getJson('/api/community/boards/' + encodeURIComponent(setup.packId.slice(2))); }
       catch { setup.packId = null; }
     }
-    if (setupTab === 'community' && comm.total) loadCommunity();
+    if (setupTab === 'community' && comm.total) refreshCommunity();
     render();
   });
   socket.emit('host:tags', (res) => {
@@ -250,6 +312,14 @@ function renderSetup() {
 
   const pack = packOf(setup.packId);
   show('themeDetail', !!pack);
+  // Community board details open in a side panel (a full-screen sheet on phones), not under the list.
+  const drawer = !!pack && setupTab === 'community';
+  $('themeDetail').classList.toggle('drawer', drawer);
+  $('themeDetail').setAttribute('role', drawer ? 'dialog' : 'region');
+  if (drawer) $('themeDetail').setAttribute('aria-label', `${pack.name} details`); else $('themeDetail').removeAttribute('aria-label');
+  show('detailBackdrop', drawer);
+  show('detailClose', drawer);
+  document.body.classList.toggle('drawer-open', drawer);
   if (!pack) return;
   const inPlay = boardsInPlay(pack);
   $('themeTitle').textContent = `${pack.emoji || ''} ${pack.name}`;
@@ -257,7 +327,7 @@ function renderSetup() {
     h('div', {}, inPlay.map((bi) => `Board ${bi + 1}: ${pack.boards[bi].name}`).join(' · ')),
     pack.teams?.length ? [h('div', {}, pack.teams.join(' · '))] : [],
     pack.community ? h('div', { class: 'comm-detail' }, [pack.madeBy ? `🌐 Made by ${pack.madeBy}` : '🌐 Community board',
-      (pack.tags || []).map((t) => `${t.emoji} ${t.name}`.trim()).join(', '), pack.kidFriendly ? '👨‍👩‍👧 Kid-friendly' : null].filter(Boolean).join(' · ')) : null);
+      (pack.tags || []).map((t) => `${t.emoji} ${t.name}`.trim()).join(', ')].filter(Boolean).join(' · '), pack.kidFriendly ? pill('pill-kids', 'Kids') : null) : null);
 
   seg('optBoards', pack.boards.length < 2 ? [['both', 'Board 1']] :
     [['both', 'Both'], ['1', 'Board 1 only'], ['2', 'Board 2 only']], pack.boards.length < 2 ? 'both' : setup.boards, (v) => (setup.boards = v));
@@ -373,8 +443,8 @@ function makePrompt() {
     '- If you run out of space, stop at the end of a row. When I say "continue", carry on from the next row.',
   ] : [
     'Reply with ONLY one JSON object in one code block, in exactly this format:',
-    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","teams":["Team ...","Team ...","Team ...","Team ..."],' +
-      (communityTags.length ? '"tags":["..."],"suggestedTag":"","kidFriendly":false,' : '') + '"boards":[{"name":"<board name>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
+    '{"format":"buzz-pack-v2","name":"<short name>","emoji":"<one emoji>","teamNames":["Team ...","Team ...","Team ...","Team ..."],' +
+      (communityTags.length ? '"tags":["..."],"suggestedTag":"","kidFriendly":false,' : '') + '"boards":[{"name":"<a real name for this board>","categories":[{"name":"...","note":"<how to play>","questions":[{"value":100,"question":"...","answer":"...","bonus":"...","bonusPoints":50,"funFact":"...","verify":false}]}]}]' + sparkleShape + '}',
   ];
   return [
     `Make a trivia pack for a party buzzer game played by ${(REGIONS[mo.region] || REGIONS.mixed)[1]}.`,
@@ -397,7 +467,8 @@ function makePrompt() {
     'Questions and extras:',
     (REGIONS[mo.region] || REGIONS.mixed)[2],
     '- Answers short (a name, title or a few words).',
-    '- 4 fun team names that fit the topic, each starting with "Team" (max 24 characters), e.g. for space: "Team Black Hole".',
+    `- ${mo.format === 'table' ? 'In the 4 Team rows: 4' : '"teamNames": 4'} fun team names that fit the topic, each starting with "Team" (max 24 characters), e.g. for space: "Team Black Hole". They're used for the teams in the game.`,
+    '- Give each board a real name that fits the topic (max 40 characters), e.g. "Rookie Orbit" and "Deep Space". It\'s shown on the game board. Never "Board 1" or "Board 2".',
     '- Every question has "bonus": a quick, silly, safe thing to do in under 15 seconds that fits the answer. bonusPoints is 50.',
     '- Optional "funFact": one short "did you know" line.',
     '- Only use facts you\'re confident about; if unsure set "verify": true.',
@@ -662,7 +733,7 @@ $('howBtn').onclick = () => setHow(true);
 $('howClose').onclick = () => setHow(false);
 $('howTv').onclick = () => setHow(true, !$('howto').classList.contains('tv'));
 $('howto').onclick = (e) => { if (e.target === $('howto')) setHow(false); };
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setHow(false); setMenu(false); if (!state?.pairing?.waitingForAllow) closePair(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDetail(); setHow(false); setMenu(false); if (!state?.pairing?.waitingForAllow) closePair(); } });
 $('startGame').onclick = startNewGame;
 $('cancelSetup').onclick = () => { setupOpen = false; render(); };
 $('themes').onclick = (e) => {
@@ -673,24 +744,22 @@ $('themes').onclick = (e) => {
   renderSetup();
 };
 $('setupTabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) switchTab(b.dataset.tab); };
-$('commTags').onclick = (e) => {
-  const b = e.target.closest('[data-tag]');
-  if (!b) return;
-  comm.tag = b.dataset.tag || null;
-  loadCommunity();
+$('commTiles').onclick = (e) => {
+  const b = e.target.closest('button');
+  if (b?.dataset.browse) { comm.tag = b.dataset.browse; comm.msg = ''; loadCommunity(); }
+  else if (b?.dataset.random) surprise(b.dataset.random);
 };
-$('commCards').onclick = (e) => { const b = e.target.closest('[data-id]'); if (b) pickCommunity(b.dataset.id); };
+$('commBack').onclick = () => { comm.tag = null; comm.msg = ''; loadCommunityHome(); };
+const pickFrom = (e) => { const b = e.target.closest('[data-id]'); if (b) pickCommunity(b.dataset.id); };
+$('commCards').onclick = pickFrom;
+$('commNew').onclick = pickFrom;
 $('commMore').onclick = () => loadCommunity(true);
-$('commKid').onchange = () => { comm.kid = $('commKid').checked; loadCommunity(); };
+$('commKid').onchange = () => { comm.kid = $('commKid').checked; comm.msg = ''; refreshCommunity(); };
 let searchTimer = null;
-$('commSearch').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { comm.q = $('commSearch').value; loadCommunity(); }, 300); };
-$('commSurprise').onclick = async () => {
-  const q = new URLSearchParams();
-  if (comm.tag) q.set('tag', comm.tag);
-  if (comm.kid) q.set('kid', '1');
-  try { await pickCommunity((await getJson('/api/community/random?' + q)).id); }
-  catch (err) { comm.msg = err.status === 404 ? 'No boards match that. Try another tag.' : err.message; renderCommunity(); }
-};
+$('commSearch').oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { comm.q = $('commSearch').value; comm.msg = ''; refreshCommunity(); }, 300); };
+$('commSurprise').onclick = () => surprise(null);
+$('detailClose').onclick = closeDetail;
+$('detailBackdrop').onclick = closeDetail;
 // Customise starts open; if the host collapses it, that's remembered.
 if (load('fbCustomiseOpen') === '0') $('customise').open = false;
 $('customise').addEventListener('toggle', () => save('fbCustomiseOpen', $('customise').open ? '1' : '0'));
@@ -805,6 +874,7 @@ function render() {
   const screen = setupOpen ? 'setup' : !state ? 'start' : state.current ? 'question' : state.reveal ? 'reveal' : state.bonus ? 'bonus' : state.screen;
   if (screen !== lastScreen) window.scrollTo(0, 0); // a new screen starts at the top
   lastScreen = screen;
+  if (screen !== 'setup') document.body.classList.remove('drawer-open'); // no scroll lock outside setup
   for (const s of ['start', 'setup', 'lobby', 'board', 'question', 'reveal', 'bonus', 'sparkle', 'winner']) show(s, s === screen);
   show('howBtn', screen === 'setup' || screen === 'board');
   // A paired phone runs the game: the TV becomes "show mode" (no host buttons) unless the host asks for them.

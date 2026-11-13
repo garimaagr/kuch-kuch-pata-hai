@@ -32,4 +32,10 @@ function cleanText(value, max) {
     .slice(0, max);
 }
 
-module.exports = { makeLimiter, cleanText };
+// Anything shaped like an HTML tag: <b>, </div>, <img src=x>, <!-- -->. "I <3 pizza" and "5 < 6" don't match.
+// This is cleanup only: every page puts text in with textContent, which is the real safety layer.
+const TAG_PATTERN = '<!--[^>]*-->|<[/!]?[A-Za-z][^<>]*>';
+const TAG_RE = new RegExp(TAG_PATTERN, 'g');
+const stripTags = (value) => String(value ?? '').replace(TAG_RE, ' ');
+
+module.exports = { makeLimiter, cleanText, stripTags, TAG_PATTERN };

@@ -49,14 +49,30 @@
     <!-- 🌐 Community: approved boards shared by other people -->
     <div id="community" class="community hidden">
       <div class="comm-tools">
-        <input id="commSearch" type="search" maxlength="40" placeholder="Search boards" aria-label="Search boards by name">
-        <label class="comm-kid"><input id="commKid" type="checkbox"> 👨‍👩‍👧 Kid-friendly only</label>
-        <button id="commSurprise" class="secondary" type="button">🎲 Surprise me</button>
+        <input id="commSearch" type="search" maxlength="40" placeholder="Search boards, tags, categories, makers" aria-label="Search boards by name, tag, category or maker">
+        <label class="comm-kid"><input id="commKid" type="checkbox"> Kids only</label>
       </div>
-      <div id="commTags" class="comm-tags"></div>
-      <div id="commCards" class="themes comm-cards"></div>
-      <button id="commMore" class="secondary hidden" type="button">Show more</button>
+      <!-- Home: 🎲, a tile per tag, ✨ New this week -->
+      <div id="commHome">
+        <button id="commSurprise" class="secondary comm-surprise" type="button">🎲 Surprise me (any board)</button>
+        <div id="commTiles" class="comm-tiles"></div>
+        <div id="commNewWrap" class="hidden">
+          <h3 class="comm-h">✨ New this week</h3>
+          <div id="commNew" class="themes comm-cards"></div>
+        </div>
+      </div>
+      <!-- One tag's boards, or search results -->
+      <div id="commListWrap" class="hidden">
+        <div class="comm-listhead">
+          <button id="commBack" class="secondary" type="button">← All tags</button>
+          <h3 id="commListTitle" class="comm-h"></h3>
+        </div>
+        <div id="commCards" class="comm-list"></div>
+        <button id="commMore" class="secondary hidden" type="button">Show more</button>
+      </div>
+      <p id="commNote" class="muted comm-note hidden" role="status"></p>
     </div>
+    <div id="detailBackdrop" class="drawer-backdrop hidden"></div>
 
     <div id="makeOwn" class="panel setup-panel make-own hidden">
       <div class="theme-title">✨ Make your own</div>
@@ -87,6 +103,7 @@
           <div id="themeBoards" class="muted"></div>
         </div>
         <button id="startGame" class="big">▶ Start</button>
+        <button id="detailClose" class="secondary drawer-close hidden" type="button" aria-label="Close board details">✕</button>
       </div>
       <div id="setupNote" class="muted"></div>
 

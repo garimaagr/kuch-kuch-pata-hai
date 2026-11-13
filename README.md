@@ -123,6 +123,7 @@ Anyone with the site link can submit a board, and every board is reviewed before
 
 **Review queue** (oldest first; at most 100 waiting)
 - Each board shows when it was submitted and a full preview: every category with its how-to-play line, every question with its answer, bonus and fun fact, and the Sparkle deck. Questions Claude wasn't sure of are marked ⚠️ and highlighted: check those facts.
+- **⚠️ HTML tags were removed** means the board had text like `<b>…</b>`. The tags are stripped when it's shared (and again whenever it's played); check the text still reads right.
 - Fix the tags, "Made by" and kid-friendly if needed.
 - If Claude suggested a new tag, **Link to existing tag**, **Create as new tag** (it's added to the tag list and to the next Make your own prompt), or **Ignore** it.
 - **Approve** (needs at least 1 tag) or **Reject** (with an optional note for yourself).
@@ -131,10 +132,10 @@ Anyone with the site link can submit a board, and every board is reviewed before
 
 **Tags:** add a tag, rename it or change its emoji, **Merge** one tag into another (its boards move over and the old tag is deleted), or **Delete** a tag nobody uses.
 
-**Players see the 🌐 Community tab** on the setup screen once at least 1 board is approved. Until then it only shows ⭐ Featured and ✨ Make your own.
+**Players see the 🌐 Community tab** on the setup screen once at least 1 board is approved. Until then it only shows ⭐ Featured and ✨ Make your own. It opens on 🎲 Surprise me, a tile for each tag (**Browse** or **🎲** a random board in it) and ✨ New this week (boards approved in the last 7 days). Searching matches board names, tags, "Made by" and category names. Kids only filters everything to kid-friendly boards.
 
 **Seeding boards** (`seed/`)
-- `seed/` holds copies of the four built-in themes, cut to the rules for shared boards (5 categories per board, questions up to 300 characters, Sparkle cards up to 80). Desi Night's copy uses Film Pehchano instead of Professor Pyarelal Explains (those questions are too long) and leaves out one long Mimic card. Add your own packs there too (any `.json` pack, e.g. one downloaded from Make your own; it can include `"tags"`).
+- Put packs in `seed/` (any `.json` pack, e.g. one downloaded from Make your own; it can include `"tags"`). Copies of the Featured themes are skipped (same name, or more than half the same questions): they're already in the game.
 - Run it against a database (your `.env`, or the live one by passing its connection string):
 
   ```bash
@@ -146,6 +147,17 @@ Anyone with the site link can submit a board, and every board is reviewed before
   ```
 
 - Each file goes into the review queue as a **pending** board with no "Made by" (set it while reviewing if you like). Review and approve them in `/admin` like any other board. Running it again skips boards that are already in the database.
+- To find community boards that copy a Featured theme (any status), and then delete them:
+
+  ```bash
+  npm run seed-community -- --remove-featured-copies
+  ```
+
+  ```bash
+  npm run seed-community -- --remove-featured-copies --confirm
+  ```
+
+  The first only lists them. Nothing is deleted without `--confirm`, on the live database too.
 
 ## Game night checklist (home wifi)
 

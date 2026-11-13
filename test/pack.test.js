@@ -93,12 +93,29 @@ test('oversize and non-JSON text are rejected; text around the JSON is ignored',
   assert.ok(validatePack(wrapped.value).ok);
 });
 
-test('HTML in a question is kept as plain text (the pages show it with textContent)', () => {
+test('HTML-looking tags are stripped from every text field and reported; <3 and 5 < 6 are kept', () => {
   const p = goodPack();
-  p.boards[0].categories[0].questions[0].question = '<img src=x onerror=alert(1)>';
+  p.name = '<b>Bold</b> Pack';
+  p.teams = ['Team <u>Rocket</u>', 'Team Comet'];
+  p.boards[0].name = '<h1>Round</h1> One';
+  const cat = p.boards[0].categories[0];
+  cat.name = '<i>Movies</i>';
+  cat.note = 'Name it <!-- hi -->';
+  cat.questions[0].question = 'Who? <img src=x onerror=alert(1)> I <3 this, 5 < 6 > 4';
+  cat.questions[0].answer = '<script>alert(1)</script>Ans';
+  cat.questions[0].bonus = 'Clap <br/> twice';
+  cat.questions[0].funFact = '<a href="https://x">Fact</a>';
+  p.sparkle = { charades: ['<em>Ghost</em>'] };
   const res = validatePack(p);
-  assert.ok(res.ok);
-  assert.strictEqual(res.pack.boards[0].categories[0].questions[0].question, '<img src=x onerror=alert(1)>');
+  assert.ok(res.ok, res.errors?.join(' '));
+  const c = res.pack.boards[0].categories[0];
+  assert.deepStrictEqual(
+    [res.pack.name, res.pack.teams[0], res.pack.boards[0].name, c.name, c.note, c.questions[0].question, c.questions[0].answer, c.questions[0].bonus, c.questions[0].funFact, res.pack.sparkle.charades[0]],
+    ['Bold Pack', 'Team Rocket', 'Round One', 'Movies', 'Name it', 'Who? I <3 this, 5 < 6 > 4', 'alert(1) Ans', 'Clap twice', 'Fact', 'Ghost']);
+  assert.strictEqual(res.stripped.length, 10);
+  assert.ok(res.stripped.includes('The pack name'));
+  assert.deepStrictEqual(validatePack(goodPack()).stripped, [], 'a clean pack reports nothing');
+  assert.match(firstError(validatePack({ ...goodPack(), name: '<b></b>' })), /pack name is empty/, 'only tags = empty');
 });
 
 test('uploads need exactly 5 categories; built-ins may have up to 8 with 5 defaults', () => {
@@ -196,6 +213,12 @@ test('team names: optional, up to 4, different, and kept through the table forma
   assert.match(firstError(validatePack({ ...p, teams: ['x'.repeat(25)] })), /too long|max/i);
   assert.match(firstError(validatePack({ ...p, teams: 'Team X' })), /list/);
   assert.strictEqual(validatePack(goodPack()).pack.teams, undefined, 'no teams is fine');
+  // "teamNames" is the name the prompt uses now; "teams" (older packs) still works. Both at once is an error.
+  const named = validatePack({ ...goodPack(), teamNames: ['Team Rocket', 'Team Comet'] });
+  assert.deepStrictEqual(named.pack.teams, ['Team Rocket', 'Team Comet']);
+  assert.ok(!('teamNames' in named.pack));
+  assert.match(firstError(validatePack({ ...goodPack(), teamNames: ['A', 'B', 'C', 'D', 'E'] })), /"teamNames" has 5 names, max 4/);
+  assert.match(firstError(validatePack({ ...goodPack(), teams: ['Team A'], teamNames: ['Team B'] })), /not both/);
 
   for (const id of ['desi', 'world', 'tv', 'sports']) {
     const pack = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'packs', id + '.json'), 'utf8'));
@@ -238,7 +261,7 @@ test('tags: optional, and wrong types are clear errors', () => {
 test('tags: no tag list (no database) keeps them as given, so playing never fails', () => {
   const res = validatePack({ ...goodPack(), tags: ['<b>Anything</b>', 'TV'] });
   assert.ok(res.ok);
-  assert.deepStrictEqual(res.pack.tags, ['<b>Anything</b>', 'TV']);
+  assert.deepStrictEqual(res.pack.tags, ['Anything', 'TV']);
 });
 
 test('tags in the table format: read from Tags / Suggested tag / Kid friendly rows, and written back', () => {

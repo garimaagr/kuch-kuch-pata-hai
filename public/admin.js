@@ -167,6 +167,7 @@ function reviewCard(b) {
   return h('article', { class: 'a-card a-board' },
     h('h3', {}, `${b.emoji} ${b.name}`.trim()),
     h('div', { class: 'muted' }, `Submitted ${when(b.created_at)}`),
+    htmlFlag(b),
     h('div', { class: 'a-grid' },
       h('label', {}, 'Made by'), madeBy,
       h('label', {}, 'Kid-friendly'), h('label', { class: 'a-check' }, kid, '👨‍👩‍👧 Suits children')),
@@ -203,6 +204,9 @@ function sparklePreview(s) {
 }
 
 // ---- Approved boards ----
+// ⚠️ when HTML-looking tags were found in a board (they're removed when it's shared or played).
+const htmlFlag = (b) => (b.html_flag ? h('div', { class: 'a-flag', role: 'note' }, '⚠️ HTML tags were removed from this board. Check the text still reads right.') : null);
+
 async function approvedView() {
   const { boards } = await api('approved');
   if (!boards.length) return h('p', { class: 'muted' }, 'No approved boards yet.');
@@ -217,7 +221,8 @@ async function approvedView() {
             ? h('button', { class: 'secondary', onclick: () => run(() => api(`packs/${b.id}/archive`, {}), 'Archived. It\'s hidden from Community.') }, 'Archive')
             : h('button', { class: 'secondary', onclick: () => run(() => api(`packs/${b.id}/unarchive`, {}), 'Back in Community.') }, 'Unarchive'))),
       h('div', { class: 'muted' }, [b.tag_ids.map(tagName).join(', ') || 'No tags', b.made_by ? `Made by ${b.made_by}` : 'Anonymous',
-        `Played ${b.play_count} time${b.play_count === 1 ? '' : 's'}`, b.kid_friendly ? '👨‍👩‍👧 Kid-friendly' : null].filter(Boolean).join(' · ')));
+        `Played ${b.play_count} time${b.play_count === 1 ? '' : 's'}`, b.kid_friendly ? '👨‍👩‍👧 Kid-friendly' : null].filter(Boolean).join(' · ')),
+      htmlFlag(b));
     const edit = () => {
       const chosen = new Set(b.tag_ids);
       const madeBy = h('input', { maxlength: 30, value: b.made_by || '', placeholder: 'Anonymous' });

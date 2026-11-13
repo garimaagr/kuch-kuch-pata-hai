@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS packs (
 ALTER TABLE packs DROP COLUMN IF EXISTS share_code_id;
 DROP TABLE IF EXISTS share_codes;
 
+-- True when HTML-looking tags were removed from the board when it was shared (/admin shows a flag).
+ALTER TABLE packs ADD COLUMN IF NOT EXISTS html_stripped boolean NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS packs_status_created_idx ON packs (status, created_at);
 
 CREATE TABLE IF NOT EXISTS pack_tags (

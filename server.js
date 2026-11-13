@@ -84,7 +84,8 @@ const publicRoute = (fn) => async (req, res) => {
     res.status(500).json({ error: 'Couldn\'t load community boards right now. Please try again.' });
   }
 };
-app.get('/api/community/tags', publicRoute(() => community.publicTags()));
+app.get('/api/community/tags', publicRoute((req) => community.publicTags(req.query)));
+app.get('/api/community/new', publicRoute((req) => community.newBoards(req.query)));
 app.get('/api/community/boards', publicRoute((req) => community.listBoards(req.query)));
 app.get('/api/community/random', publicRoute(async (req) => {
   const id = await community.randomBoard(req.query);

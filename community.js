@@ -4,7 +4,7 @@
 
 const crypto = require('crypto');
 const db = require('./db');
-const { cleanText } = require('./limits');
+const { cleanText, stripTags } = require('./limits');
 const { validatePack, MAX_TAGS } = require('./pack');
 
 const MADE_BY_MAX = 30;
@@ -24,10 +24,11 @@ function contentHash(pack) {
 const LINKISH = /(https?:|www\.|:\/\/|\b[a-z0-9-]+\.(com|net|org|io|in|co|uk|us|ly|me|app|dev|xyz|gg|tv|info|biz|link|site)\b)/i;
 function cleanMadeBy(value) {
   if (value != null && typeof value !== 'string') return { error: '"Made by" must be text.' };
-  const clean = cleanText(value ?? '', Infinity);
+  const untagged = stripTags(value ?? '');
+  const clean = cleanText(untagged, Infinity);
   if (clean.length > MADE_BY_MAX) return { error: `"Made by" is too long (max ${MADE_BY_MAX} characters).` };
   if (LINKISH.test(clean)) return { error: '"Made by" can\'t include a link. Use a first name or nickname.' };
-  return { value: clean || null };
+  return { value: clean || null, stripped: untagged !== (value ?? '') };
 }
 
 // ---- Rate limits kept in memory (per network) ----
@@ -46,14 +47,14 @@ const fail = (error) => ({ ok: false, error });
 
 // Saves a validated pack for review (status pending), one row per category. Returns its id.
 // No checks here: submitPack (and the seed script) do those first.
-async function savePending(pack, { hash = contentHash(pack), madeBy = null, kidFriendly = !!pack.kidFriendly, tagIds = [] } = {}) {
+async function savePending(pack, { hash = contentHash(pack), madeBy = null, kidFriendly = !!pack.kidFriendly, tagIds = [], htmlStripped = false } = {}) {
   return db.transaction(async (c) => {
     const { rows } = await c.query(
-      `INSERT INTO packs (name, emoji, made_by, kid_friendly, suggested_tag, board_names, teams, sparkle, content_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      `INSERT INTO packs (name, emoji, made_by, kid_friendly, suggested_tag, board_names, teams, sparkle, content_hash, html_stripped)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
       [pack.name, pack.emoji || '', madeBy, kidFriendly, pack.suggestedTag || null,
         JSON.stringify(pack.boards.map((b) => b.name)), pack.teams ? JSON.stringify(pack.teams) : null,
-        pack.sparkle ? JSON.stringify(pack.sparkle) : null, hash],
+        pack.sparkle ? JSON.stringify(pack.sparkle) : null, hash, !!htmlStripped],
     );
     const id = rows[0].id;
     for (const [bi, b] of pack.boards.entries()) {
@@ -103,7 +104,7 @@ async function submitPack(input, { ip = 'unknown', now = Date.now() } = {}) {
     if (dup.rowCount) return fail('This board has already been shared.');
 
     // 4. Save as pending: one row per category.
-    await savePending(pack, { hash, madeBy: who.value, kidFriendly: kidFriendly ?? !!pack.kidFriendly, tagIds });
+    await savePending(pack, { hash, madeBy: who.value, kidFriendly: kidFriendly ?? !!pack.kidFriendly, tagIds, htmlStripped: checked.stripped.length > 0 || who.stripped });
     hit(dayKey, now);
     return { ok: true, message: 'Thanks! It\'ll appear in Community once it\'s approved.' };
   } catch (err) {
@@ -118,23 +119,39 @@ const PAGE_SIZE = 20;
 const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s ?? ''));
 const tagSlug = (s) => (typeof s === 'string' && /^[a-z0-9-]{1,40}$/.test(s) ? s : null);
 
-// Filters shared by the list and 🎲 Surprise me: $1 tag slug, $2 search text, $3 kid-friendly only.
+// Filters shared by the list and 🎲 Surprise me: $1 tag slug, $2 search pattern, $3 kid-friendly only.
+// Search matches the board name, its tag names, "Made by" and its category names.
 const FILTER = `p.status = 'approved'
   AND ($1::text IS NULL OR EXISTS (SELECT 1 FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = p.id AND t.slug = $1))
-  AND ($2::text IS NULL OR position(lower($2) in lower(p.name)) > 0)
+  AND ($2::text IS NULL OR p.name ILIKE $2 ESCAPE '\\' OR p.made_by ILIKE $2 ESCAPE '\\'
+       OR EXISTS (SELECT 1 FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = p.id AND t.name ILIKE $2 ESCAPE '\\')
+       OR EXISTS (SELECT 1 FROM categories c WHERE c.pack_id = p.id AND c.name ILIKE $2 ESCAPE '\\'))
   AND (NOT $3::boolean OR p.kid_friendly)`;
-const filterValues = ({ tag, q, kid } = {}) => [tagSlug(tag), cleanText(q ?? '', 40) || null, kid === true || kid === '1' || kid === 'true'];
+// The search text as an ILIKE "contains" pattern. % _ and \ typed by people are matched literally.
+function searchPattern(q) {
+  const text = cleanText(q ?? '', 40);
+  return text ? '%' + text.replace(/[\\%_]/g, '\\$&') + '%' : null;
+}
+const isKid = (kid) => kid === true || kid === '1' || kid === 'true';
+const filterValues = ({ tag, q, kid } = {}) => [tagSlug(tag), searchPattern(q), isKid(kid)];
 const TAGS_OF = `COALESCE((SELECT json_agg(json_build_object('slug', t.slug, 'name', t.name, 'emoji', t.emoji) ORDER BY lower(t.name))
   FROM pack_tags pt JOIN tags t ON t.id = pt.tag_id WHERE pt.pack_id = p.id), '[]')`;
+const NEW_DAYS = 7;
+const IS_NEW = `(p.reviewed_at > now() - interval '${NEW_DAYS} days')`;
+const CARD_COLS = `p.id, p.name, p.emoji, p.made_by, p.play_count, p.kid_friendly, ${IS_NEW} AS is_new, ${TAGS_OF} AS tags`;
 
-const card = (r) => ({ id: r.id, name: r.name, emoji: r.emoji, madeBy: r.made_by, playCount: r.play_count, kidFriendly: r.kid_friendly, tags: r.tags });
+// Older boards may still hold HTML-looking tags (they're removed on sharing now): tidy them for display.
+const tidy = (s) => (s == null ? s : cleanText(stripTags(s), Infinity));
+const card = (r) => ({ id: r.id, name: tidy(r.name), emoji: r.emoji, madeBy: tidy(r.made_by), playCount: r.play_count, kidFriendly: r.kid_friendly, isNew: !!r.is_new, tags: r.tags });
 
-// Tags with at least 1 approved board (with counts), and how many approved boards there are.
-async function publicTags() {
+// Tags with at least 1 approved board (with counts; only kid-friendly boards when kid is on),
+// and how many approved boards there are in all (that decides whether the Community tab shows).
+async function publicTags({ kid } = {}) {
   const [tags, total] = await Promise.all([
     db.query(`SELECT t.slug, t.name, t.emoji, count(*)::int AS boards
-                FROM tags t JOIN pack_tags pt ON pt.tag_id = t.id JOIN packs p ON p.id = pt.pack_id AND p.status = 'approved'
-               GROUP BY t.id ORDER BY boards DESC, lower(t.name)`),
+                FROM tags t JOIN pack_tags pt ON pt.tag_id = t.id
+                JOIN packs p ON p.id = pt.pack_id AND p.status = 'approved' AND (NOT $1::boolean OR p.kid_friendly)
+               GROUP BY t.id ORDER BY boards DESC, lower(t.name)`, [isKid(kid)]),
     db.query("SELECT count(*)::int AS n FROM packs WHERE status = 'approved'"),
   ]);
   return { total: total.rows[0].n, tags: tags.rows };
@@ -144,13 +161,25 @@ async function publicTags() {
 async function listBoards(filters = {}) {
   const page = Math.min(Math.max(Number.parseInt(filters.page, 10) || 0, 0), 500);
   const { rows } = await db.query(
-    `SELECT p.id, p.name, p.emoji, p.made_by, p.play_count, p.kid_friendly, ${TAGS_OF} AS tags
+    `SELECT ${CARD_COLS}
        FROM packs p WHERE ${FILTER}
       ORDER BY p.play_count DESC, p.reviewed_at DESC NULLS LAST, p.id
       LIMIT ${PAGE_SIZE + 1} OFFSET $4`,
     [...filterValues(filters), page * PAGE_SIZE],
   );
   return { boards: rows.slice(0, PAGE_SIZE).map(card), more: rows.length > PAGE_SIZE, page };
+}
+
+// ✨ New this week: up to 6 boards approved in the last 7 days, newest first.
+const NEW_MAX = 6;
+async function newBoards({ kid } = {}) {
+  const { rows } = await db.query(
+    `SELECT ${CARD_COLS} FROM packs p
+      WHERE p.status = 'approved' AND ${IS_NEW} AND (NOT $1::boolean OR p.kid_friendly)
+      ORDER BY p.reviewed_at DESC, p.id LIMIT ${NEW_MAX}`,
+    [isKid(kid)],
+  );
+  return { boards: rows.map(card) };
 }
 
 // 🎲 A random approved board that matches the tag and kid-friendly filters. null if none.
@@ -187,7 +216,7 @@ async function countPlay(id) {
 }
 
 module.exports = {
-  PAGE_SIZE, isUuid, publicTags, listBoards, randomBoard, loadPack, countPlay,
+  PAGE_SIZE, NEW_MAX, NEW_DAYS, isUuid, publicTags, listBoards, newBoards, randomBoard, searchPattern, loadPack, countPlay,
   PER_IP_PER_DAY, MAX_PENDING, MADE_BY_MAX,
   contentHash, cleanMadeBy, submitPack, savePending, pruneLimits,
 };

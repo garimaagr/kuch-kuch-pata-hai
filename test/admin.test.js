@@ -118,6 +118,7 @@ test('review flow', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async (t) 
   assert.strictEqual(pending[0].suggested_tag, 'Anime');
   assert.strictEqual(pending[0].boards[0].categories.length, 5);
   assert.strictEqual(pending[0].boards[0].categories[0].questions[4].verify, true);
+  assert.deepStrictEqual(pending.map((b) => b.html_flag), [false, false], 'no HTML, no flag');
   const [one, two] = pending;
 
   // Unknown suggested tag -> create it as a new tag -> it's in the next prompt's tag list.
@@ -137,6 +138,18 @@ test('review flow', { skip: !URL && 'set TEST_DATABASE_URL to run' }, async (t) 
   const row = (await db.query('SELECT status, made_by, kid_friendly, suggested_tag, reject_reason, reviewed_at FROM packs ORDER BY name')).rows;
   assert.deepStrictEqual(row.map((r) => [r.status, r.made_by, r.kid_friendly, r.suggested_tag, r.reject_reason, !!r.reviewed_at]),
     [['approved', 'Jeffrey', true, null, null, true], ['rejected', null, false, null, 'Too short', true]]);
+
+  // ⚠️ HTML flag: set when tags were stripped on sharing, and for older boards that still hold tags.
+  const tagged = pack(3, []);
+  tagged.boards[0].categories[0].questions[0].question = 'Who sang <i>Thriller</i>?';
+  assert.ok((await community.submitPack({ pack: tagged, tags: ['TV'] }, { ip: 'x3' })).ok);
+  await db.query("INSERT INTO packs (name, content_hash, status, reviewed_at) VALUES ('<b>Old</b> Board', 'old-1', 'approved', now())");
+  pending = (await call('pending')).body.boards;
+  assert.deepStrictEqual(pending.map((b) => [b.name, b.html_flag]), [['Board 3', true]]);
+  const flagged = (await call('approved')).body.boards.find((b) => b.name === '<b>Old</b> Board');
+  assert.strictEqual(flagged.html_flag, true, 'older boards with tags are flagged too');
+  await call(`packs/${pending[0].id}/reject`, {});
+  await db.query("DELETE FROM packs WHERE content_hash = 'old-1'");
 
   // Approved list, archive and unarchive.
   let approved = (await call('approved')).body.boards;

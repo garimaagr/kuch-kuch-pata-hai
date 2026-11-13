@@ -654,6 +654,7 @@ body.admin { padding: 0 0 3rem; }
 .a-cat-name { font-weight: 700; }
 .a-cat ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
 .a-cat li { margin: 0.3rem 0; }
+.a-flag { background: rgba(255, 107, 107, 0.12); border-left: 3px solid #ff6b6b; border-radius: 6px; padding: 0.4rem 0.6rem; margin: 0.4rem 0; }
 .a-verify { background: rgba(255, 201, 51, 0.12); border-left: 3px solid var(--accent); padding-left: 0.4rem; }
 .a-actions { margin-top: 0.8rem; }
 .admin button.danger { background: #5a1f33; color: #ffd6dc; border-color: #ff6b6b; }
@@ -676,8 +677,42 @@ body.admin { padding: 0 0 3rem; }
 .comm-tools input[type="search"] { flex: 1; min-width: 12rem; margin: 0; }
 .comm-kid { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; cursor: pointer; }
 .comm-kid input { width: auto; margin: 0; accent-color: var(--accent); }
-.comm-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.7rem 0 0.2rem; }
-.comm-tags .segbtn { font-size: 0.9rem; }
+.comm-surprise { margin: 0.8rem 0 0.2rem; }
+.comm-h { margin: 1.1rem 0 0.2rem; font-size: 1.05rem; }
+/* Tag tiles */
+.comm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0.7rem; margin-top: 0.8rem; }
+.comm-tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.8rem 0.7rem 0.7rem; display: grid; justify-items: center; gap: 0.15rem; text-align: center; }
+.comm-tile-emoji { font-size: 2rem; line-height: 1.1; }
+.comm-tile-name { font-weight: 800; overflow-wrap: anywhere; }
+.comm-tile-count { font-size: 0.82rem; color: var(--muted); }
+.comm-tile-actions { display: flex; gap: 0.35rem; margin-top: 0.45rem; }
+.comm-tile-actions button { padding: 0.35em 0.8em; font-size: 0.9rem; }
+@media (max-width: 480px) { .comm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; } .comm-tile { padding: 0.65rem 0.4rem 0.55rem; } }
+/* One tag's boards / search results: a compact list */
+.comm-listhead { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-top: 0.8rem; }
+.comm-listhead .comm-h { margin: 0; }
+.comm-list { display: grid; gap: 0.4rem; margin: 0.7rem 0; }
+.theme.comm-card.compact { padding: 0.5rem 0.8rem; border-radius: 12px; }
+.comm-card.compact .theme-emoji { font-size: 1.6rem; }
+.comm-card.compact .theme-name { font-size: 1rem; }
+/* Small labels on cards */
+.pill { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1; padding: 0.25em 0.5em; border-radius: 999px; margin-left: 0.4rem; vertical-align: 0.15em; }
+.pills { display: inline-flex; gap: 0.3rem; margin-left: 0.4rem; white-space: nowrap; vertical-align: 0.15em; }
+.pills .pill { margin-left: 0; vertical-align: 0; }
+.pill-new { background: var(--accent); color: var(--accent-ink); }
+.pill-kids { background: #2b6b4a; color: #e6fff1; }
+.comm-detail .pill { margin-left: 0.5rem; }
+/* Community board details: a side panel; a full-screen sheet on phones */
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(5, 3, 15, 0.55); z-index: 40; }
+#themeDetail.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); margin: 0; z-index: 41; overflow-y: auto; overscroll-behavior: contain; border-radius: var(--radius) 0 0 var(--radius); box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45); }
+#themeDetail.drawer .setup-head { flex-wrap: wrap; align-items: flex-start; }
+#themeDetail.drawer #customise .opt { grid-template-columns: 1fr; gap: 0.4rem; }
+.drawer-close { position: absolute; top: 0.7rem; right: 0.7rem; padding: 0.35em 0.7em; }
+#themeDetail.drawer .setup-head > div:first-child { padding-right: 3rem; }
+@media (max-width: 700px) {
+  #themeDetail.drawer { width: 100vw; border-radius: 0; }
+  body.drawer-open { overflow: hidden; }
+}
 .comm-cards { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 .theme.comm-card { flex-wrap: nowrap; justify-content: flex-start; text-align: left; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; }
 .comm-card .theme-emoji { flex: 0 0 auto; }

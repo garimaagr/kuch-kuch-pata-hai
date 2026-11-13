@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const express = require('express');
 const db = require('./db');
 const community = require('./community');
-const { makeLimiter, cleanText } = require('./limits');
+const { makeLimiter, cleanText, TAG_PATTERN } = require('./limits');
 const { MAX_TAGS } = require('./pack');
 
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -107,9 +107,15 @@ function adminRouter({ pin = process.env.ADMIN_PIN || '', ipOf = (req) => req.so
     const { rows: packs } = await db.query(
       `SELECT p.id, p.name, p.emoji, p.made_by, p.kid_friendly, p.suggested_tag, p.board_names, p.teams, p.sparkle,
               p.status, p.reject_reason, p.play_count, p.created_at, p.reviewed_at,
+              -- ⚠️ HTML flag: tags were removed when it was shared, or an older board still holds some
+              -- (those are removed whenever the board is played).
+              (p.html_stripped OR concat_ws(' ', p.name, p.made_by, p.board_names::text, p.teams::text, p.sparkle::text) ~ $1
+                OR EXISTS (SELECT 1 FROM categories c WHERE c.pack_id = p.id
+                             AND concat_ws(' ', c.name, c.description, c.questions::text) ~ $1)) AS html_flag,
               COALESCE((SELECT json_agg(pt.tag_id ORDER BY pt.tag_id) FROM pack_tags pt WHERE pt.pack_id = p.id), '[]') AS tag_ids
          FROM packs p
         WHERE ${where} ORDER BY ${order} LIMIT 200`,
+      [TAG_PATTERN],
     ); // `where` / `order` are fixed strings below, never user input
     return packs;
   }

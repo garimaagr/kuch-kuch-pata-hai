@@ -1,6 +1,6 @@
 // Reads and checks question packs. Every pack goes through validatePack, built-in or uploaded.
 // It only ever uses JSON.parse, rejects anything unexpected, and returns a clean copy.
-const { cleanText } = require('./limits');
+const { cleanText, stripTags } = require('./limits');
 const { parseTable, looksLikeTable, packToTable } = require('./table');
 
 const FORMAT = 'buzz-pack-v2';
@@ -57,13 +57,21 @@ function looksCutOff(s) {
   return depth > 0 || inStr;
 }
 
-// Returns { ok: true, pack } with a cleaned copy, or { ok: false, errors: [...] }.
+// Returns { ok: true, pack, stripped } with a cleaned copy, or { ok: false, errors: [...] }.
+// stripped: where HTML-looking tags were removed (e.g. ["The pack name"]); empty when none were.
 // options: { kind: 'upload' | 'builtin', allowNoBoards: false, knownTags: null }
 // knownTags: the community tag names (from the database). Tags not on it become the suggested tag.
 function validatePack(input, { kind = 'upload', allowNoBoards = false, knownTags = null } = {}) {
   const L = LIMITS[kind];
   const errors = [];
   const err = (msg) => { if (errors.length < 20) errors.push(msg); };
+  const stripped = [];
+  // Removes HTML-looking tags and notes where (the admin sees a flag). Then cleans as usual.
+  const untag = (value, where) => {
+    const out = stripTags(value);
+    if (out !== value) { if (stripped.length < 20) stripped.push(where); }
+    return out;
+  };
 
   // Only these keys are allowed on each object.
   const onlyKeys = (obj, allowed, where) => {
@@ -73,7 +81,7 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false, knownTags
   const str = (value, max, where, required = true) => {
     if (value == null && !required) return undefined;
     if (typeof value !== 'string') { err(`${where} must be text.`); return undefined; }
-    const clean = cleanText(value, Infinity);
+    const clean = cleanText(untag(value, where), Infinity);
     if (!clean && required) { err(`${where} is empty.`); return undefined; }
     if (clean.length > max) { err(`${where} is too long (${clean.length} characters, max ${max}).`); return undefined; }
     return clean || undefined;
@@ -85,7 +93,7 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false, knownTags
   };
 
   if (!isObj(input)) return { ok: false, errors: ['A pack must be one JSON object.'] };
-  onlyKeys(input, ['format', 'name', 'emoji', 'teams', 'boards', 'sparkle', 'tags', 'suggestedTag', 'kidFriendly'], 'The pack');
+  onlyKeys(input, ['format', 'name', 'emoji', 'teamNames', 'teams', 'boards', 'sparkle', 'tags', 'suggestedTag', 'kidFriendly'], 'The pack');
   if (input.format !== FORMAT) err(`"format" must be "${FORMAT}".`);
   const pack = { format: FORMAT, name: str(input.name, L.name, 'The pack name'), emoji: undefined, boards: [] };
   if (input.emoji != null) {
@@ -95,18 +103,22 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false, knownTags
   }
 
   // ---- Team names (optional): up to 4, used in order for Team 1, 2, 3, 4 ----
-  if (input.teams != null) {
-    if (!Array.isArray(input.teams)) err('"teams" must be a list of team names.');
-    else if (input.teams.length > MAX_TEAMS) err(`"teams" has ${input.teams.length} names, max ${MAX_TEAMS}.`);
+  // "teamNames" is the current name; "teams" (older packs) still works. The cleaned pack keeps "teams".
+  const teamKey = input.teamNames != null ? 'teamNames' : 'teams';
+  const teamList = input[teamKey];
+  if (input.teamNames != null && input.teams != null) err('Use "teamNames" or "teams", not both.');
+  else if (teamList != null) {
+    if (!Array.isArray(teamList)) err(`"${teamKey}" must be a list of team names.`);
+    else if (teamList.length > MAX_TEAMS) err(`"${teamKey}" has ${teamList.length} names, max ${MAX_TEAMS}.`);
     else {
-      const names = input.teams.map((t, i) => str(t, TEAM_NAME_MAX, `Team name ${ordinal(i)}`)).filter(Boolean);
+      const names = teamList.map((t, i) => str(t, TEAM_NAME_MAX, `Team name ${ordinal(i)}`)).filter(Boolean);
       if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) err('The team names must all be different.');
       if (names.length) pack.teams = names;
     }
   }
 
   // ---- Community tags (optional): only used when sharing; playing ignores them ----
-  Object.assign(pack, packTags(input, knownTags, err));
+  Object.assign(pack, packTags(input, knownTags, err, untag));
   pack.kidFriendly = bool(input.kidFriendly, '"kidFriendly"');
 
   // ---- Boards ----
@@ -193,15 +205,15 @@ function validatePack(input, { kind = 'upload', allowNoBoards = false, knownTags
     }
   }
 
-  return errors.length ? { ok: false, errors } : { ok: true, pack: strip(pack) };
+  return errors.length ? { ok: false, errors } : { ok: true, pack: strip(pack), stripped };
 }
 
 // "tags", "suggestedTag": Claude picks 1–3 tags from the list it was given. A tag that isn't on the
 // list doesn't fail the pack: it becomes the suggested tag (only the first one is kept) for the
 // admin to decide on. Known tags are matched ignoring case and spelt like the list.
-function packTags(input, knownTags, err) {
+function packTags(input, knownTags, err, untag = (s) => s) {
   const out = {};
-  const clean = (t, max) => (typeof t === 'string' ? cleanText(t, max) : '');
+  const clean = (t, max) => (typeof t === 'string' ? cleanText(untag(t, 'A tag'), max) : '');
   if (input.tags != null && !Array.isArray(input.tags)) err('"tags" must be a list of tag names.');
   if (input.suggestedTag != null && typeof input.suggestedTag !== 'string') err('"suggestedTag" must be text.');
   const given = Array.isArray(input.tags) ? input.tags.slice(0, 20).map((t) => clean(t, TAG_MAX)).filter(Boolean) : [];
@@ -270,4 +282,4 @@ function checkUploadedText(text, { fallbackName, knownTags = null } = {}) {
   return { ok: true, pack: res.pack, preview: packPreview(res.pack), csv: packToTable(res.pack) };
 }
 
-module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_TAGS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, packPreview, checkUploadedText };
+module.exports = { FORMAT, BOARD_VALUES, LIMITS, MAX_TEAMS, TEAM_NAME_MAX, MAX_TAGS, MAX_PACK_BYTES, parsePackText, validatePack, defaultCategories, packPreview, checkUploadedText };
